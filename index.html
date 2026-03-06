@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backwater Mining Collective — Appalachian Pioneers of the Digital Frontier</title>
+<meta name="description" content="A grassroots movement of miners, engineers, cypherpunks, and heatpunks across Appalachia. Mining for heat. Mining for community. Mining for decentralization.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-dark:    #1a1209;
+  --bg-section: #1f160d;
+  --bg-card:    #261c10;
+  --amber:      #d4830a;
+  --amber-glow: #e69520;
+  --amber-dim:  #a5650a;
+  --text:       #e8dcc8;
+  --text-muted: #9c8b74;
+  --heading:    #f0e4d0;
+  --bitcoin:    #f7931a;
+  --font-heading: 'Cinzel', 'Playfair Display', Georgia, serif;
+  --font-body:    'Source Sans 3', 'Inter', -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--bg-dark);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+body { overflow-x: hidden; }
+
+/* Ensure content sits above the fixed ember layer */
+.nav, .hero, section, footer, .cta-links { position: relative; z-index: 1; }
+
+a { color: var(--amber); text-decoration: none; transition: color .2s; }
+a:hover { color: var(--amber-glow); }
+
+img { max-width: 100%; height: auto; }
+
+::selection { background: var(--amber); color: var(--bg-dark); }
+
+/* ── Navigation ───────────────────────────────── */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  padding: .8rem 1.5rem;
+  background: rgba(26,18,9,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(212,131,10,.15);
+  transition: transform .3s;
+}
+/* .nav.hidden removed — nav is always visible */
+.nav a {
+  font-family: var(--font-heading);
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: .4rem 0;
+  position: relative;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+.nav-links a:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: calc(100% + 1.25rem);
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: rgba(212,131,10,.3);
+  pointer-events: none;
+}
+.nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transition: transform .3s;
+}
+.nav a:hover, .nav a.active { color: var(--amber); }
+.nav a:hover::after, .nav a.active::after { transform: scaleX(1); }
+
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: .5rem;
+  position: absolute;
+  right: 1.2rem;
+}
+.nav-toggle span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--amber);
+  margin: 5px 0;
+  transition: .3s;
+}
+
+/* ── Hero ─────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6rem 1.5rem 4rem;
+  overflow: hidden;
+}
+
+/* Mountain silhouette background */
+.hero::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: -5%; right: -5%;
+  height: 45%;
+  background:
+    /* Near ridge */
+    linear-gradient(135deg, transparent 33%, #0f0b06 33%, #0f0b06 34%, transparent 34%),
+    linear-gradient(165deg, transparent 40%, #120e07 40%, #12100a 100%),
+    /* Far ridge */
+    linear-gradient(150deg, transparent 25%, rgba(15,11,6,.6) 25%);
+  opacity: .5;
+  z-index: 0;
+}
+
+/* Radial glow behind logo */
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(212,131,10,.08) 0%, transparent 70%);
+  z-index: 0;
+}
+
+.hero-content { position: relative; z-index: 2; }
+
+.hero-logo {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  margin-bottom: 2rem;
+  filter: drop-shadow(0 0 40px rgba(212,131,10,.25));
+  animation: logoPulse 4s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+  0%, 100% { filter: drop-shadow(0 0 40px rgba(212,131,10,.25)); }
+  50% { filter: drop-shadow(0 0 60px rgba(212,131,10,.4)); }
+}
+
+.hero h1 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.3;
+  max-width: 800px;
+  margin: 0 auto 1.2rem;
+}
+
+.hero h1 span { color: var(--amber); }
+
+.hero-tagline {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 2.5rem;
+  letter-spacing: .03em;
+}
+
+.hero-motto {
+  display: inline-flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: .8rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+}
+
+.hero-motto span::before {
+  content: '⛏';
+  margin-right: .5rem;
+}
+
+.hero-scroll {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  animation: scrollBounce 2s ease-in-out infinite;
+}
+.hero-scroll svg {
+  width: 28px;
+  height: 28px;
+  stroke: var(--amber-dim);
+  fill: none;
+  stroke-width: 2;
+}
+
+@keyframes scrollBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+
+/* Ember canvas */
+#ember-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ── Sections ─────────────────────────────────── */
+section {
+  padding: 5rem 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+section:nth-child(even) { background: transparent; }
+
+.section-label {
+  font-family: var(--font-heading);
+  font-size: .7rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+  margin-bottom: .5rem;
+}
+
+section h2 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 1.5rem;
+  line-height: 1.3;
+}
+
+section h2 .accent { color: var(--amber); }
+
+section p { margin-bottom: 1.2rem; }
+section p:last-child { margin-bottom: 0; }
+
+/* Divider */
+.divider {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--amber), transparent);
+  margin: 3rem auto;
+  border: none;
+}
+
+/* ── Feature Cards ────────────────────────────── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.1);
+  border-radius: 6px;
+  padding: 2rem 1.5rem;
+  transition: border-color .3s, transform .3s;
+}
+
+.feature-card:hover {
+  border-color: rgba(212,131,10,.3);
+  transform: translateY(-3px);
+}
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.feature-card h3 {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  color: var(--heading);
+  margin-bottom: .8rem;
+}
+
+.feature-card p {
+  font-size: .95rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ── Blockquote ───────────────────────────────── */
+.callout cite {
+  display: block;
+  margin-top: .75rem;
+  font-size: .85rem;
+  font-style: normal;
+  color: var(--amber);
+  opacity: .8;
+}
+.callout {
+  border-left: 3px solid var(--amber);
+  padding: 1.5rem 2rem;
+  margin: 2rem 0;
+  background: rgba(212,131,10,.04);
+  border-radius: 0 6px 6px 0;
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+/* ── Principles list ──────────────────────────── */
+.principles {
+  list-style: none;
+  margin: 1.5rem 0;
+}
+
+.principles li {
+  padding: .8rem 0 .8rem 2rem;
+  position: relative;
+  border-bottom: 1px solid rgba(212,131,10,.07);
+}
+
+.principles li:last-child { border-bottom: none; }
+
+.principles li::before {
+  content: '₿';
+  position: absolute;
+  left: 0;
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* ── Join / CTA Section ───────────────────────── */
+.cta-section {
+  text-align: center;
+  padding: 5rem 1.5rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.cta-form {
+  display: flex;
+  gap: .75rem;
+  max-width: 480px;
+  margin: 2rem auto 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.cta-form input[type="email"] {
+  flex: 1;
+  min-width: 220px;
+  padding: .85rem 1.2rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color .3s;
+}
+
+.cta-form input[type="email"]::placeholder { color: var(--text-muted); }
+.cta-form input[type="email"]:focus { border-color: var(--amber); }
+
+.cta-form button {
+  padding: .85rem 2rem;
+  background: var(--amber);
+  color: var(--bg-dark);
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-heading);
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .3s, transform .15s;
+}
+
+.cta-form button:hover { background: var(--amber-glow); transform: translateY(-1px); }
+.cta-form button:active { transform: translateY(0); }
+
+.cta-links {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  font-size: .95rem;
+}
+
+/* ── Footer ───────────────────────────────────── */
+.footer {
+  text-align: center;
+  padding: 3rem 1.5rem 2rem;
+  border-top: 1px solid rgba(212,131,10,.1);
+  margin-top: 2rem;
+}
+
+.footer-name {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  letter-spacing: .1em;
+  color: var(--text-muted);
+  margin-bottom: .5rem;
+}
+
+.footer-btc {
+  color: var(--bitcoin);
+  font-size: 1.4rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.footer-sub {
+  font-size: .8rem;
+  color: rgba(156,139,116,.5);
+}
+
+/* ── Fade-in on scroll ────────────────────────── */
+.fade-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Mobile ───────────────────────────────────── */
+@media (max-width: 768px) {
+  html { font-size: 16px; }
+  
+  .nav {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0;
+  }
+  .nav-brand {
+    font-family: var(--font-heading);
+    font-size: .75rem;
+    letter-spacing: .1em;
+    color: var(--amber);
+    text-transform: uppercase;
+  }
+  .nav-toggle { display: block; }
+  .nav-links {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+  .nav-links.open { display: flex; }
+  .nav a { font-size: .8rem; }
+  
+  .hero-logo { width: 160px; height: 160px; }
+  
+  section { padding: 3.5rem 1.2rem; }
+  
+  .features { grid-template-columns: 1fr; }
+  
+  .cta-form { flex-direction: column; align-items: stretch; }
+  .cta-form input[type="email"] { min-width: unset; }
+}
+
+@media (max-width: 480px) {
+  .hero-motto { flex-direction: column; gap: .5rem; }
+  .hero h1 { font-size: 1.4rem; }
+}
+
+/* ── CSS Ember dots (no canvas) ───────────────── */
+.ember {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation: emberRise linear infinite;
+}
+@keyframes emberRise {
+  0%   { opacity: 0;   transform: translateY(0)   scale(1); }
+  15%  { opacity: .7; }
+  85%  { opacity: .3; }
+  100% { opacity: 0;   transform: translateY(-80vh) scale(.3); }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <span class="nav-brand">BMC</span>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links" id="nav-links">
+    <a href="#who">Who We Are</a>
+    <a href="#what">What We Do</a>
+    <a href="#why">Why</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<header class="hero" id="hero">
+  <canvas id="ember-canvas"></canvas>
+  <div class="hero-content">
+    <img src="bmc-logo.png" alt="Backwater Mining Collective" class="hero-logo">
+    <h1><span>Backwater Miners:</span><br>Appalachian Pioneers of the Digital Frontier</h1>
+    <p class="hero-tagline">A grassroots movement of miners, engineers, cypherpunks &amp; heatpunks</p>
+    <div class="hero-motto">
+      <span>Mining for heat</span>
+      <span>Mining for community</span>
+      <span>Mining for decentralization</span>
+    </div>
+  </div>
+  <a href="#who" class="hero-scroll" aria-label="Scroll down">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  </a>
+</header>
+
+<!-- Who We Are -->
+<section id="who" class="fade-in">
+  <div class="section-label">Our Roots</div>
+  <h2>Who <span class="accent">We Are</span></h2>
+  <p>History remembers the Overmountain Men as the frontier settlers of Appalachia who built some of the first self-governing communities in America (the Watauga Association), long before a nation existed to sanction them. They were farmers, hunters, and tradespeople who believed that a community could organize itself, share knowledge, and solve problems together.</p>
+  <p>The <strong>Backwater Mining Collective</strong> draws on that same Appalachian spirit. We are a grassroots, community-driven non-profit made up of blue-collar workers, engineers, researchers, cypherpunks, and heatpunks from across the Appalachian range. We are united by a shared belief: that Bitcoin mining can and should benefit the communities where it happens, not just the miners themselves.</p>
+  <p>We are not a company. We are neighbors who learn together, build together, and share what we find.</p>
+</section>
+
+<hr class="divider">
+
+<!-- What We Do -->
+<section id="what" class="fade-in">
+  <div class="section-label">Our Work</div>
+  <h2>What <span class="accent">We Do</span></h2>
+  <p>Bitcoin mining is an energy-intensive process, and like any process that uses energy, it produces heat. In a typical industrial operation, that heat is simply vented away as waste. We think that's a missed opportunity, especially for small communities where every BTU counts.</p>
+  <p>We research, document, and build practical heat reuse systems that work at home scale, and we share everything we learn freely with anyone who wants to try it.</p>
+
+  <div class="callout">
+    "Bitcoin heat reuse originated as small-scale systems in homes and small businesses. These early prototypes and proof-of-concepts were largely the work of bitcoin plebs and hobbyists experimenting with new ways to repurpose old miners to heat their environment, support the network, and save costs."
+    <cite>— Tyler Stevens, <em>Bitcoin Mining Heat Reuse</em> (Braiins, 2025)</cite>
+  </div>
+
+  <div class="features">
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🔥</span>
+      <h3>Heat Reuse Research</h3>
+      <p>We study and document real-world applications of mining heat: space heating, water heating, greenhouse growing, and small-business integration. Our findings are published openly for anyone to use.</p>
+    </div>
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🤝</span>
+      <h3>Community Education</h3>
+      <p>We run workshops, write guides, and connect experienced miners with people who are just starting out. If you want to understand how Bitcoin mining works, or how to build your own system, we want to help.</p>
+    </div>
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🔓</span>
+      <h3>Open Source Development</h3>
+      <p>We contribute to and support open-source mining tools including firmware, monitoring software, and hardware designs, so that home miners have access to the same quality of tooling as larger operations.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Why We Do It -->
+<section id="why" class="fade-in">
+  <div class="section-label">Our Mission</div>
+  <h2>Why <span class="accent">We Do It</span></h2>
+  <p>Home and small-scale Bitcoin mining has a perception problem. People assume it's only economical at industrial scale, that the small operator can't compete, can't afford it, and shouldn't bother trying. We think that framing misses the point.</p>
+  <p>A home miner isn't just trying to out-compete a data center. They're learning a skill, building local infrastructure, keeping value in their own community, and often solving a real problem: cutting their heating bill in half.</p>
+  <p>Our goal is to make the practical case for home mining through real data, real builds, and real community. We want to lower the barrier to getting started, improve the tools available to small operators, and document what actually works. Honestly, without hype.</p>
+
+  <ul class="principles">
+    <li><strong>Waste nothing.</strong> Heat is a resource. We help people capture it, redirect it, and make it useful.</li>
+    <li><strong>Education first.</strong> The more people understand how this works, the better the whole ecosystem gets.</li>
+    <li><strong>Open by default.</strong> Everything we build and learn is shared freely, because that's how communities grow.</li>
+    <li><strong>Think long-term.</strong> We're building habits, skills, and infrastructure rather than chasing short-term profits.</li>
+  </ul>
+</section>
+
+<hr class="divider">
+
+<!-- Join Us — coming soon -->
+<!--
+<section id="join" class="cta-section fade-in">
+  <div class="section-label">Get Involved</div>
+  <h2>Join <span class="accent">the Collective</span></h2>
+  <p>Whether you're already mining or just curious, whether you've got a workshop full of ASICs or a spare outlet and a dream, there's a place for you here.</p>
+  <form class="cta-form" onsubmit="handleSubmit(event)">
+    <input type="email" placeholder="your@email.com" aria-label="Email address" required>
+    <button type="submit">Join the Collective</button>
+  </form>
+  <div class="cta-links">
+    <a href="https://github.com/backwater-mining-collective" target="_blank" rel="noopener">GitHub</a>
+    <a href="mailto:hello@backwatermining.org">Email Us</a>
+  </div>
+</section>
+-->
+
+<div class="cta-links" style="text-align:center;padding:3rem 0 1rem;">
+  <a href="https://github.com/backwater-mining-collective" target="_blank" rel="noopener">GitHub</a>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <span class="footer-btc">₿</span>
+  <div class="footer-name">Backwater Mining Collective</div>
+  <p class="footer-sub">Mining for heat. Mining for community. Mining for decentralization.</p>
+</footer>
+
+<script>
+/* ── Ember / Firelight: full-page fixed overlay ── */
+(function() {
+  var canvas = document.getElementById('ember-canvas');
+  if (canvas) canvas.style.display = 'none';
+  var colors = ['#d4830a','#e69520','#f7931a','#c26a08'];
+  // Container fixed to viewport so embers float over entire page while scrolling
+  var container = document.createElement('div');
+  container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden';
+  document.body.appendChild(container);
+  for (var i = 0; i < 28; i++) {
+    var e = document.createElement('div');
+    e.className = 'ember';
+    var size = (Math.random() * 3 + 1).toFixed(1);
+    e.style.cssText = [
+      'width:' + size + 'px',
+      'height:' + size + 'px',
+      'left:' + (Math.random() * 100).toFixed(1) + '%',
+      'bottom:' + (Math.random() * 60).toFixed(1) + '%',
+      'background:' + colors[i % colors.length],
+      'box-shadow:0 0 ' + (size * 3) + 'px ' + colors[i % colors.length],
+      'animation-duration:' + (Math.random() * 10 + 8).toFixed(1) + 's',
+      'animation-delay:' + (Math.random() * 12).toFixed(1) + 's'
+    ].join(';');
+    container.appendChild(e);
+  }
+})();
+
+/* ── Scroll: fade-in elements ─────────────────── */
+(function() {
+  document.documentElement.classList.add('js-loaded');
+  var els = document.querySelectorAll('.fade-in');
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+  els.forEach(function(el) { observer.observe(el); });
+})();
+
+/* ── Nav: always visible (sticky) ─────────────── */
+/* hide-on-scroll removed per design — nav stays fixed at top */
+
+/* ── Nav: active link highlight ───────────────── */
+(function() {
+  var sections = document.querySelectorAll('section[id]');
+  var links = document.querySelectorAll('.nav-links a');
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        links.forEach(function(l) { l.classList.remove('active'); });
+        var active = document.querySelector('.nav-links a[href="#' + e.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '-60px 0px -40% 0px' });
+  sections.forEach(function(s) { observer.observe(s); });
+})();
+
+/* ── Mobile nav toggle ────────────────────────── */
+(function() {
+  var toggle = document.getElementById('nav-toggle');
+  var links = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  toggle.addEventListener('click', function() {
+    links.classList.toggle('open');
+  });
+  links.addEventListener('click', function(e) {
+    if (e.target.tagName === 'A') links.classList.remove('open');
+  });
+})();
+
+/* ── Form placeholder handler ─────────────────── */
+function handleSubmit(e) {
+  e.preventDefault();
+  var input = e.target.querySelector('input');
+  var btn = e.target.querySelector('button');
+  var email = input.value;
+  btn.textContent = 'Welcome aboard ⛏';
+  btn.style.background = '#2d7d3a';
+  input.value = '';
+  setTimeout(function() {
+    btn.textContent = 'Join the Collective';
+    btn.style.background = '';
+  }, 3000);
+}
+</script>
+
+</body>
+</html>
