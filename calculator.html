@@ -1005,6 +1005,16 @@ tr.row-hardware { }
 }
 .pool-sync-status.success { color: #4caf72; }
 .pool-sync-status.error   { color: var(--red-glow); }
+.pool-sync-warning {
+  background: rgba(212,131,10,.08);
+  border: 1px solid rgba(212,131,10,.25);
+  border-radius: 4px;
+  padding: .65rem .9rem;
+  font-size: .82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: .75rem;
+}
 .heating-slider-row {
   display: flex;
   align-items: center;
@@ -1572,6 +1582,19 @@ tr.row-hardware { }
         <label for="ocean-address">OCEAN Pool Address</label>
         <input type="text" id="ocean-address" placeholder="bc1q... or 1... or 3..." autocomplete="off" spellcheck="false">
         <span class="form-help">Your Bitcoin payout address registered with OCEAN pool.</span>
+      </div>
+      <div class="form-row">
+        <label for="mempool-instance">Mempool Instance <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-muted);">(optional)</span></label>
+        <select id="mempool-instance" onchange="onMempoolInstanceChange()">
+          <option value="https://mempool.space">mempool.space (default)</option>
+          <option value="https://mempool.757btc.org">mempool.757btc.org (community)</option>
+          <option value="custom">Local / Self-Hosted (enter URL below)</option>
+        </select>
+        <input type="text" id="mempool-url" placeholder="e.g. http://umbrel.local:3006 or http://192.168.1.100:3006" autocomplete="off" spellcheck="false" oninput="saveMempoolUrl()" style="display:none; margin-top:0.4rem;">
+        <span class="form-help" id="mempool-help">All options use the mempool.space API. <span id="mempool-custom-warn" style="display:none; color:var(--amber);">⚠️ Custom URL must be a mempool.space-compatible instance.</span></span>
+      </div>
+      <div class="pool-sync-warning">
+        ⚠️ <strong>Privacy notice:</strong> This feature sends your Bitcoin address to the mempool instance above to fetch transaction history. To avoid linking your IP to your address, use your own self-hosted mempool instance, or enable a VPN or Tor before syncing.
       </div>
       <div class="pool-sync-date-row">
         <div class="form-row" style="margin:0">
@@ -2713,9 +2736,46 @@ function togglePoolSync() {
   document.getElementById('pool-sync').classList.toggle('open');
 }
 
+function getMempoolBase() {
+  const sel = document.getElementById('mempool-instance');
+  const val = sel ? sel.value : 'https://mempool.space';
+  if (val === 'custom') {
+    const custom = (document.getElementById('mempool-url').value || '').trim().replace(/\/$/, '');
+    return custom || 'https://mempool.space';
+  }
+  return val || 'https://mempool.space';
+}
+
+function saveMempoolUrl() {
+  const val = (document.getElementById('mempool-url').value || '').trim();
+  localStorage.setItem('bmc_mempool_url', val);
+}
+
+function onMempoolInstanceChange() {
+  const sel = document.getElementById('mempool-instance');
+  const urlInput = document.getElementById('mempool-url');
+  const customWarn = document.getElementById('mempool-custom-warn');
+  if (sel.value === 'custom') {
+    urlInput.style.display = 'block';
+    customWarn.style.display = 'inline';
+  } else {
+    urlInput.style.display = 'none';
+    customWarn.style.display = 'none';
+  }
+  localStorage.setItem('bmc_mempool_instance', sel.value);
+}
+
 function initPoolSync() {
   const addr = localStorage.getItem('bmc_ocean_address') || '';
   document.getElementById('ocean-address').value = addr;
+  const savedInstance = localStorage.getItem('bmc_mempool_instance') || 'https://mempool.space';
+  const instanceSel = document.getElementById('mempool-instance');
+  if (instanceSel) {
+    instanceSel.value = savedInstance;
+    onMempoolInstanceChange();
+  }
+  const mempoolUrl = localStorage.getItem('bmc_mempool_url') || '';
+  document.getElementById('mempool-url').value = mempoolUrl;
 
   const today = new Date();
   const oneYearAgo = new Date();
@@ -2734,7 +2794,8 @@ function setSyncStatus(msg, type) {
 // Uses mempool.space paginated API. Stops paginating when txs go older than fromTs.
 async function fetchMempoolTxs(address, fromTs, toTs) {
   const allTxs = [];
-  let url = `https://mempool.space/api/address/${encodeURIComponent(address)}/txs`;
+  const mempoolBase = getMempoolBase();
+  let url = `${mempoolBase}/api/address/${encodeURIComponent(address)}/txs`;
 
   for (let page = 0; page < 20; page++) { // cap at 20 pages (1000 txs) to be safe
     let res;
@@ -2771,7 +2832,7 @@ async function fetchMempoolTxs(address, fromTs, toTs) {
 
     // Paginate: next page starts after the last txid in this batch
     const lastTxid = batch[batch.length - 1].txid;
-    url = `https://mempool.space/api/address/${encodeURIComponent(address)}/txs/chain/${lastTxid}`;
+    url = `${mempoolBase}/api/address/${encodeURIComponent(address)}/txs/chain/${lastTxid}`;
   }
 
   return allTxs;
@@ -2804,7 +2865,7 @@ async function syncOceanPayouts() {
   const toTs   = Math.floor(new Date(toStr   + 'T23:59:59Z').getTime() / 1000);
 
   setLoading('sync-btn', 'sync-spinner', true);
-  setSyncStatus('Fetching transactions from mempool.space…');
+  setSyncStatus(`Fetching transactions from ${getMempoolBase()}…`);
 
   let rawTxs;
   try {
@@ -2812,7 +2873,7 @@ async function syncOceanPayouts() {
   } catch (e) {
     setLoading('sync-btn', 'sync-spinner', false);
     if (String(e).includes('fetch-failed') || e instanceof TypeError) {
-      setSyncStatus('Could not reach mempool.space. Check your connection and try again.', 'error');
+      setSyncStatus(`Could not reach ${getMempoolBase()}. Check the URL and your connection.`, 'error');
     } else {
       setSyncStatus('API error: ' + e.message, 'error');
     }
