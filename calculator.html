@@ -1,0 +1,4326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mining ROI Calculator — Backwater Mining Collective</title>
+<meta name="description" content="Track your Bitcoin mining ROI in sats. Log payouts, electricity costs, and hardware purchases to see your real break-even and ROI.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-dark:    #1a1209;
+  --bg-section: #1f160d;
+  --bg-card:    #261c10;
+  --amber:      #d4830a;
+  --amber-glow: #e69520;
+  --amber-dim:  #a5650a;
+  --text:       #e8dcc8;
+  --text-muted: #9c8b74;
+  --heading:    #f0e4d0;
+  --bitcoin:    #f7931a;
+  --green:      #3a8c4e;
+  --green-dim:  #2d6e3d;
+  --red:        #8c3a3a;
+  --red-glow:   #c04040;
+  --orange:     #8c5a1a;
+  --font-heading: 'Cinzel', 'Playfair Display', Georgia, serif;
+  --font-body:    'Source Sans 3', 'Inter', -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--bg-dark);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+body { overflow-x: hidden; }
+
+.nav, .page-header, .calculator-wrap, footer { position: relative; z-index: 1; }
+
+a { color: var(--amber); text-decoration: none; transition: color .2s; }
+a:hover { color: var(--amber-glow); }
+
+::selection { background: var(--amber); color: var(--bg-dark); }
+
+/* ── Navigation ───────────────────────────────── */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  padding: .8rem 1.5rem;
+  background: rgba(26,18,9,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(212,131,10,.15);
+}
+.nav a {
+  font-family: var(--font-heading);
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: .4rem 0;
+  position: relative;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+.nav-links a:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: calc(100% + 1.25rem);
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: rgba(212,131,10,.3);
+  pointer-events: none;
+}
+.nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transition: transform .3s;
+}
+.nav a:hover, .nav a.active { color: var(--amber); }
+.nav a:hover::after, .nav a.active::after { transform: scaleX(1); }
+
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: .5rem;
+  position: absolute;
+  right: 1.2rem;
+}
+.nav-toggle span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--amber);
+  margin: 5px 0;
+  transition: .3s;
+}
+
+/* ── Page Header ──────────────────────────────── */
+.page-header {
+  padding: 7rem 1.5rem 3rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(212,131,10,.08);
+}
+.page-header .section-label {
+  font-family: var(--font-heading);
+  font-size: .7rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+  margin-bottom: .5rem;
+}
+.page-header h1 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: .75rem;
+}
+.page-header h1 .accent { color: var(--amber); }
+.page-header p {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ── Calculator Layout ────────────────────────── */
+.calculator-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  /* Solid background prevents ember particles from showing through
+     the transparent grid/flex gaps between cards */
+  background: var(--bg-dark);
+}
+
+/* ── Summary Cards ────────────────────────────── */
+.summary-grid {
+  display: grid;
+  /* Fixed 3-column layout: 6 cards → clean 3×3 rows */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+  align-items: stretch;   /* equal height rows */
+}
+.summary-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: 1.25rem 1.25rem;  /* slightly tighter horizontal so values breathe */
+  text-align: center;
+  transition: border-color .3s;
+  /* flex column so content is vertically centred inside equal-height cells */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 96px;  /* prevents oddly short cards when values are absent */
+}
+.summary-card:hover { border-color: rgba(212,131,10,.3); }
+.summary-card .label {
+  font-family: var(--font-heading);
+  font-size: .65rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: .4rem;
+  /* prevent label from wrapping unevenly across cards */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.summary-card .value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--amber);
+  font-family: var(--font-heading);
+  word-break: break-word;
+  line-height: 1.2;
+}
+.summary-card .value.positive { color: #4caf72; }
+.summary-card .value.negative { color: #e05555; }
+.summary-card .sub {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: .3rem;
+  line-height: 1.3;
+}
+/* Date-type values (break-even cards) use smaller font to fit without wrapping */
+.summary-card .summary-date-val {
+  font-size: 1.05rem;
+}
+
+/* Adv. Break-Even card: 7th card spans full grid width, centered at ~1/3 width */
+#proj-adv-card {
+  grid-column: 1 / -1;
+  max-width: 33%;
+  margin: 0 auto;
+}
+
+/* Break-even caption below Chart 1 */
+.breakeven-caption {
+  font-size: .82rem;
+  color: var(--amber);
+  text-align: center;
+  margin-top: .6rem;
+  min-height: 1.2em;
+}
+.breakeven-caption.not-yet {
+  color: var(--text-muted);
+}
+
+/* ── Chart ────────────────────────────────────── */
+.chart-wrap {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+.chart-wrap h3 {
+  font-family: var(--font-heading);
+  font-size: .85rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.chart-container {
+  position: relative;
+  height: 280px;
+}
+
+/* ── Entry Forms ──────────────────────────────── */
+.forms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+}
+.entry-form {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: 1.5rem;
+}
+.entry-form h3 {
+  font-family: var(--font-heading);
+  font-size: .9rem;
+  color: var(--heading);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.entry-form h3 .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.payout-form h3 .dot { background: #4caf72; }
+.electricity-form h3 .dot { background: #e05555; }
+.hardware-form h3 .dot { background: var(--amber); }
+
+.form-row { margin-bottom: .75rem; }
+.form-row label {
+  display: block;
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin-bottom: .3rem;
+  font-family: var(--font-heading);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.form-row input,
+.form-row select,
+.form-row textarea {
+  width: 100%;
+  padding: .6rem .85rem;
+  background: rgba(26,18,9,.7);
+  border: 1px solid rgba(212,131,10,.2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .3s;
+}
+.form-row input::placeholder,
+.form-row textarea::placeholder { color: var(--text-muted); opacity: .7; }
+.form-row input:focus,
+.form-row select:focus,
+.form-row textarea:focus { border-color: var(--amber); }
+.form-row select option { background: #1f160d; }
+.form-row textarea { resize: vertical; min-height: 56px; }
+
+.currency-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+}
+
+.btn-add {
+  width: 100%;
+  padding: .7rem 1rem;
+  margin-top: .5rem;
+  background: var(--amber);
+  color: var(--bg-dark);
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-heading);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, transform .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+}
+.btn-add:hover { background: var(--amber-glow); transform: translateY(-1px); }
+.btn-add:active { transform: translateY(0); }
+.btn-add:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(26,18,9,.4);
+  border-top-color: var(--bg-dark);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+.loading .spinner { display: block; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.form-error {
+  font-size: .8rem;
+  color: #e05555;
+  margin-top: .4rem;
+  display: none;
+}
+.form-error.visible { display: block; }
+
+/* ── Table Section ────────────────────────────── */
+.table-section {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(212,131,10,.1);
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.table-header h3 {
+  font-family: var(--font-heading);
+  font-size: .85rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.table-actions {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.btn-secondary {
+  padding: .45rem 1rem;
+  background: transparent;
+  border: 1px solid rgba(212,131,10,.3);
+  border-radius: 4px;
+  color: var(--amber);
+  font-family: var(--font-heading);
+  font-size: .7rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.btn-secondary:hover {
+  background: rgba(212,131,10,.1);
+  border-color: var(--amber);
+}
+
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+}
+thead th {
+  font-family: var(--font-heading);
+  font-size: .65rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: .75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(212,131,10,.1);
+  white-space: nowrap;
+}
+tbody tr {
+  border-bottom: 1px solid rgba(212,131,10,.05);
+  transition: background .15s;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(212,131,10,.04); }
+tbody td {
+  padding: .7rem 1rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+tbody td.notes-cell {
+  white-space: normal;
+  max-width: 200px;
+  word-break: break-word;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: .2rem .6rem;
+  border-radius: 3px;
+  font-family: var(--font-heading);
+  font-size: .65rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.badge-payout { background: rgba(76,175,114,.15); color: #4caf72; }
+.badge-electricity { background: rgba(224,85,85,.15); color: #e05555; }
+.badge-hardware { background: rgba(212,131,10,.15); color: var(--amber); }
+
+tr.row-payout { }
+tr.row-electricity { }
+tr.row-hardware { }
+
+.sats-positive { color: #4caf72; font-weight: 600; }
+.sats-negative { color: #e05555; font-weight: 600; }
+.balance-positive { color: #4caf72; font-weight: 700; }
+.balance-negative { color: #e05555; font-weight: 700; }
+
+.btn-delete {
+  padding: .3rem .7rem;
+  background: transparent;
+  border: 1px solid rgba(224,85,85,.3);
+  border-radius: 3px;
+  color: #e05555;
+  font-size: .75rem;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+  font-family: var(--font-body);
+}
+.btn-delete:hover {
+  background: rgba(224,85,85,.15);
+  border-color: #e05555;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-muted);
+  font-size: .95rem;
+}
+.empty-state .icon { font-size: 2rem; margin-bottom: .75rem; display: block; }
+
+/* ── Manual Price Modal ───────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.3);
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 420px;
+  width: 100%;
+}
+.modal h3 {
+  font-family: var(--font-heading);
+  color: var(--heading);
+  margin-bottom: .5rem;
+  font-size: 1rem;
+}
+.modal p { font-size: .9rem; color: var(--text-muted); margin-bottom: 1.25rem; }
+.modal .form-row { margin-bottom: 1rem; }
+.modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1rem; }
+.btn-cancel {
+  padding: .6rem 1.2rem;
+  background: transparent;
+  border: 1px solid rgba(212,131,10,.2);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: .75rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-cancel:hover { border-color: rgba(212,131,10,.4); color: var(--text); }
+.btn-confirm {
+  padding: .6rem 1.2rem;
+  background: var(--amber);
+  border: none;
+  border-radius: 4px;
+  color: var(--bg-dark);
+  font-family: var(--font-heading);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn-confirm:hover { background: var(--amber-glow); }
+
+/* ── Toast ────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: .75rem 1.25rem;
+  border-radius: 6px;
+  font-size: .9rem;
+  font-weight: 600;
+  z-index: 3000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: transform .3s, opacity .3s;
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #1d3d28; color: #4caf72; border: 1px solid #2d6e3d; }
+.toast.error { background: #3d1d1d; color: #e05555; border: 1px solid #6e2d2d; }
+.toast.info { background: #2a1f0d; color: var(--amber); border: 1px solid rgba(212,131,10,.4); }
+
+/* ── Import hidden input ─────────────────────── */
+#csv-import-input { display: none; }
+
+/* ── Projection Panel ────────────────────────── */
+.proj-panel {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2.5rem;
+}
+.proj-panel h3 {
+  font-family: var(--font-heading);
+  font-size: .85rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.proj-gate {
+  color: var(--text-muted);
+  font-size: .9rem;
+  padding: .25rem 0;
+}
+.adv-section {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.adv-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: .85rem 1rem;
+  background: rgba(26,18,9,.5);
+  border-radius: 4px;
+  border: 1px solid rgba(212,131,10,.1);
+}
+.adv-inner .form-row { margin: 0; min-width: 200px; }
+.adv-status {
+  font-size: .85rem;
+  line-height: 1.4;
+  padding-bottom: .15rem;
+  max-width: 280px;
+}
+.adv-status.adv-loading { color: var(--text-muted); font-style: italic; }
+.adv-status.adv-success { color: #4caf72; }
+.adv-status.adv-error   { color: #e05555; }
+
+/* ── Profitable Achievement Card ─────────────── */
+.proj-achieved {
+  display: none;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+.proj-achieved-inner {
+  display: inline-block;
+  background: rgba(212,131,10,.07);
+  border: 1px solid rgba(212,131,10,.38);
+  border-radius: 8px;
+  padding: 2rem 2.5rem;
+  max-width: 440px;
+  width: 100%;
+}
+.proj-achieved-icon {
+  font-size: 2.2rem;
+  display: block;
+  margin-bottom: .55rem;
+  filter: drop-shadow(0 0 10px rgba(230,149,32,.55));
+}
+.proj-achieved-title {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  color: var(--amber-glow);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: .45rem;
+}
+.proj-achieved-date {
+  font-size: .85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.proj-achieved-balance {
+  font-family: var(--font-heading);
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #4caf72;
+  letter-spacing: .04em;
+  line-height: 1.2;
+}
+.proj-achieved-balance-sub {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: .35rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  font-family: var(--font-heading);
+}
+
+/* ── Divider ──────────────────────────────────── */
+.divider {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--amber), transparent);
+  margin: 2.5rem auto;
+  border: none;
+}
+
+/* ── Footer ───────────────────────────────────── */
+.footer {
+  text-align: center;
+  padding: 3rem 1.5rem 2rem;
+  border-top: 1px solid rgba(212,131,10,.1);
+  margin-top: 2rem;
+}
+.footer-name {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  letter-spacing: .1em;
+  color: var(--text-muted);
+  margin-bottom: .5rem;
+}
+.footer-btc {
+  color: var(--bitcoin);
+  font-size: 1.4rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+.footer-sub {
+  font-size: .8rem;
+  color: rgba(156,139,116,.5);
+}
+
+/* ── Hashrate Input Row ─────────────────────── */
+.hashrate-input-row {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+}
+.hashrate-input-row input {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
+}
+.hashrate-unit-select {
+  flex: 0 0 72px;
+  width: 72px;
+  padding: .6rem .5rem .6rem .65rem;
+  background: rgba(26,18,9,.7);
+  border: 1px solid rgba(212,131,10,.2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .3s;
+  cursor: pointer;
+}
+.hashrate-unit-select:focus { border-color: var(--amber); }
+.hashrate-unit-select option { background: #1f160d; }
+
+/* ── ROI Global Settings ───────────────────────── */
+.roi-global-settings {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.roi-global-settings-label {
+  font-family: var(--font-heading);
+  font-size: .62rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+  padding-top: .55rem;
+  white-space: nowrap;
+}
+.roi-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+.roi-settings-field > label {
+  font-size: .8rem;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.roi-settings-field input[type=number] {
+  width: 100%;
+  padding: .6rem .75rem;
+  background: rgba(26,18,9,.7);
+  border: 1px solid rgba(212,131,10,.2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .3s;
+}
+.roi-settings-field input[type=number]:focus {
+  border-color: var(--amber);
+}
+
+/* ── How It Works (Heating Tab) ─────────────── */
+.how-it-works {
+  margin-top: 1.5rem;
+}
+.how-it-works-btn {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: .9rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: .82rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  transition: background .2s, border-color .2s;
+  text-align: left;
+}
+.how-it-works-btn:hover {
+  background: rgba(212,131,10,.07);
+  border-color: rgba(212,131,10,.28);
+}
+.how-it-works.open .how-it-works-btn {
+  border-radius: 6px 6px 0 0;
+  border-bottom-color: transparent;
+}
+.how-it-works-arrow {
+  display: inline-block;
+  transition: transform .3s;
+  color: var(--amber-dim);
+  font-size: .85rem;
+}
+.how-it-works.open .how-it-works-arrow { transform: rotate(180deg); }
+.how-it-works-body {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 1.5rem;
+  display: none;
+}
+.how-it-works.open .how-it-works-body { display: block; }
+.hiw-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.hiw-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.hiw-num {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--bg-dark);
+  font-family: var(--font-heading);
+  font-size: .72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: .15rem;
+}
+.hiw-text {
+  font-size: .92rem;
+  color: var(--text);
+  line-height: 1.65;
+}
+.hiw-text strong { color: var(--heading); }
+
+/* ── Embers ───────────────────────────────────── */
+.ember {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation: emberRise linear infinite;
+}
+@keyframes emberRise {
+  0%   { opacity: 0;   transform: translateY(0) scale(1); }
+  15%  { opacity: .7; }
+  85%  { opacity: .3; }
+  100% { opacity: 0;   transform: translateY(-80vh) scale(.3); }
+}
+
+/* ── Tabs ────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(212,131,10,.15);
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: .7rem 1.5rem;
+  font-family: var(--font-heading);
+  font-size: .75rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color .2s, background .2s, border-color .2s;
+  position: relative;
+  bottom: -1px;
+}
+.tab-btn:hover {
+  color: var(--amber-glow);
+  background: rgba(212,131,10,.04);
+}
+.tab-btn.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+  background: rgba(212,131,10,.06);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Hashrate Heating Tab ──────────────────────── */
+.heating-panel {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.heating-section-title {
+  font-family: var(--font-heading);
+  font-size: .9rem;
+  color: var(--heading);
+  margin-bottom: 1.25rem;
+  letter-spacing: .04em;
+}
+.heating-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .75rem 1.5rem;
+}
+.form-help {
+  display: block;
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin-top: .3rem;
+  line-height: 1.4;
+}
+
+/* ── Pool Sync ─────────────────────────────────── */
+.pool-sync {
+  margin-bottom: 1.5rem;
+}
+.pool-sync-btn {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: .9rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: .82rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  transition: background .2s, border-color .2s;
+  text-align: left;
+}
+.pool-sync-btn:hover {
+  background: rgba(212,131,10,.07);
+  border-color: rgba(212,131,10,.28);
+}
+.pool-sync.open .pool-sync-btn {
+  border-radius: 6px 6px 0 0;
+  border-bottom-color: transparent;
+}
+.pool-sync-arrow {
+  display: inline-block;
+  transition: transform .3s;
+  color: var(--amber-dim);
+  font-size: .85rem;
+}
+.pool-sync.open .pool-sync-arrow { transform: rotate(180deg); }
+.pool-sync-body {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 1.25rem 1.5rem 1.5rem;
+  display: none;
+}
+.pool-sync.open .pool-sync-body { display: block; }
+.pool-sync-date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.pool-sync-status {
+  margin-top: .75rem;
+  font-size: .85rem;
+  color: var(--text-muted);
+  min-height: 1.2em;
+}
+.pool-sync-status.success { color: #4caf72; }
+.pool-sync-status.error   { color: var(--red-glow); }
+.heating-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: .3rem;
+}
+.heating-slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--amber);
+  cursor: pointer;
+  height: 6px;
+}
+.heating-slider-val {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--amber);
+  min-width: 2ch;
+  text-align: center;
+}
+.heating-results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.heating-note {
+  font-size: .88rem;
+  color: var(--text-muted);
+  background: rgba(212,131,10,.04);
+  border: 1px solid rgba(212,131,10,.1);
+  border-radius: 4px;
+  padding: .85rem 1rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+.heating-toggle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+.btn-heating-mode {
+  padding: .65rem 1.75rem;
+  background: transparent;
+  border: 1px solid var(--amber);
+  border-radius: 4px;
+  color: var(--amber);
+  font-family: var(--font-heading);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s;
+}
+.btn-heating-mode:hover { background: rgba(212,131,10,.12); }
+.heating-detailed-settings {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .75rem 1.5rem;
+  margin-top: 1.25rem;
+}
+.h-fraction-input {
+  width: 68px;
+  padding: .3rem .55rem;
+  background: rgba(26,18,9,.7);
+  border: 1px solid rgba(212,131,10,.2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: .9rem;
+  outline: none;
+  transition: border-color .3s;
+  text-align: right;
+}
+.h-fraction-input:focus { border-color: var(--amber); }
+#h-monthly-table tfoot td {
+  font-family: var(--font-heading);
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  padding: .7rem 1rem;
+  border-top: 1px solid rgba(212,131,10,.2);
+}
+@media (max-width: 900px) {
+  .heating-results-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .heating-inputs-grid,
+  .heating-detailed-settings { grid-template-columns: 1fr; }
+  .heating-results-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Hashrate Heating Placeholder ──────────────── */
+.coming-soon-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  padding: 3rem 2rem;
+  text-align: center;
+  max-width: 560px;
+  margin: 2rem auto;
+}
+.coming-soon-card .cs-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+.coming-soon-card h3 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--amber);
+  letter-spacing: .06em;
+  margin-bottom: .75rem;
+}
+.coming-soon-card p { font-size: .95rem; color: var(--text-muted); line-height: 1.65; }
+
+/* ── Definitions Table ──────────────────────────── */
+.definitions-intro {
+  font-size: .95rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: .25rem 0;
+}
+.definitions-table-wrap {
+  background: var(--bg-card);
+  border: 1px solid rgba(212,131,10,.12);
+  border-radius: 6px;
+  overflow: hidden;
+  overflow-x: auto;
+}
+.definitions-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+}
+.definitions-table-wrap thead th {
+  font-family: var(--font-heading);
+  font-size: .65rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: .75rem 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(212,131,10,.15);
+  background: rgba(26,18,9,.5);
+  white-space: nowrap;
+}
+.definitions-table-wrap tbody tr:nth-child(odd) {
+  background: rgba(38,28,16,.5);
+}
+.definitions-table-wrap tbody tr:nth-child(even) {
+  background: rgba(26,18,9,.35);
+}
+.definitions-table-wrap tbody tr {
+  border-bottom: 1px solid rgba(212,131,10,.05);
+  transition: background .15s;
+}
+.definitions-table-wrap tbody tr:last-child { border-bottom: none; }
+.definitions-table-wrap tbody tr:hover { background: rgba(212,131,10,.07); }
+.definitions-table-wrap tbody td {
+  padding: .85rem 1.25rem;
+  vertical-align: top;
+  white-space: normal;
+  line-height: 1.6;
+}
+.def-term {
+  color: var(--amber);
+  font-weight: 600;
+  min-width: 180px;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .tab-btn { padding: .6rem .9rem; font-size: .68rem; letter-spacing: .08em; }
+  .definitions-table-wrap thead { display: none; }
+  .definitions-table-wrap tbody tr { display: block; padding: .75rem 1rem; border-bottom: 1px solid rgba(212,131,10,.1); }
+  .definitions-table-wrap tbody td { display: block; padding: .15rem 0; min-width: unset; white-space: normal; }
+  .def-term { display: block; padding-bottom: .35rem; white-space: normal; }
+}
+
+/* ── Network Stats Bar ────────────────────────── */
+.network-stats-bar {
+  background: var(--bg-section);
+  border: 1px solid rgba(212,131,10,.28);
+  border-radius: 6px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.75rem;
+}
+.network-stats-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+.network-stats-title {
+  font-family: var(--font-heading);
+  font-size: .62rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4caf72;
+  box-shadow: 0 0 6px #4caf72;
+  animation: livePulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px #4caf72; }
+  50%       { opacity: .45; box-shadow: 0 0 2px #4caf72; }
+}
+.network-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.network-card {
+  background: rgba(26,18,9,.6);
+  border: 1px solid rgba(212,131,10,.2);
+  border-left: 2px solid rgba(212,131,10,.45);
+  border-radius: 5px;
+  padding: .85rem 1rem;
+  text-align: center;
+  transition: border-color .3s;
+}
+.network-card:hover { border-color: rgba(212,131,10,.4); border-left-color: var(--amber); }
+.network-card .label {
+  font-family: var(--font-heading);
+  font-size: .6rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: .35rem;
+}
+.network-card .value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--amber);
+  font-family: var(--font-heading);
+}
+.network-card .sub {
+  font-size: .75rem;
+  color: var(--text-muted);
+  margin-top: .2rem;
+}
+.net-loading {
+  color: var(--text-muted);
+  font-weight: 400;
+  animation: netBlink 1.2s ease-in-out infinite;
+}
+@keyframes netBlink {
+  0%, 100% { opacity: .8; }
+  50%       { opacity: .25; }
+}
+.diff-up   { color: #e05555; }
+.diff-down { color: #4caf72; }
+
+@media (max-width: 600px) {
+  .network-stats-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Mobile ───────────────────────────────────── */
+@media (max-width: 900px) {
+  .forms-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  html { font-size: 16px; }
+  .nav {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0;
+  }
+  .nav-brand {
+    font-family: var(--font-heading);
+    font-size: .75rem;
+    letter-spacing: .1em;
+    color: var(--amber);
+    text-transform: uppercase;
+  }
+  .nav-toggle { display: block; }
+  .nav-links {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+  .nav-links.open { display: flex; }
+  .nav-links a::before { display: none; }
+  .nav a { font-size: .8rem; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  #proj-adv-card { max-width: 50%; }
+}
+@media (max-width: 480px) {
+  /* Keep 2-column layout even on small phones — 1 col feels too spacious */
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  #proj-adv-card { max-width: 100%; }
+  .table-header { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── Privacy Banner ───────────────────────────── */
+.privacy-banner {
+  background: var(--bg-card);
+  border-left: 3px solid var(--amber);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  width: 100%;
+  margin-bottom: 1.75rem;
+  border-radius: 0 4px 4px 0;
+}
+
+/* ── Heating Offset Toggle Row ────────────────── */
+.heating-offset-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.heating-offset-toggle-row .toggle-label {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.heating-offset-toggle-row .toggle-sub {
+  color: var(--amber-dim);
+  font-size: 0.8rem;
+}
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(156,139,116,.4);
+  border-radius: 24px;
+  transition: background .2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: var(--text);
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--amber);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+  background: var(--bg-dark);
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <span class="nav-brand">BMC</span>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links" id="nav-links">
+    <a href="index.html#who">Who We Are</a>
+    <a href="index.html#what">What We Do</a>
+    <a href="index.html#why">Why</a>
+    <a href="calculator.html" class="active">Calculator</a>
+  </div>
+</nav>
+
+<!-- Page Header -->
+<header class="page-header">
+  <div class="section-label">Track Your Operation</div>
+  <h1>Mining <span class="accent">ROI Calculator</span></h1>
+  <p>Everything in sats. Log payouts, electricity, and hardware — we'll fetch historical BTC prices and show you where you really stand.</p>
+</header>
+
+<!-- Calculator -->
+<div class="calculator-wrap">
+
+  <!-- Privacy Notice Banner -->
+  <div class="privacy-banner">
+    🔒 Your data never leaves your device. Everything is stored locally in your browser — no accounts, no servers, no tracking.
+  </div>
+
+  <!-- Network Stats Bar (always visible) -->
+  <div class="network-stats-bar">
+    <div class="network-stats-header">
+      <span class="live-dot"></span>
+      <span class="network-stats-title">Bitcoin Network</span>
+    </div>
+    <div class="network-stats-grid">
+      <div class="network-card">
+        <div class="label">Network Hashrate</div>
+        <div class="value" id="net-hashrate-val"><span class="net-loading">…</span></div>
+        <div class="sub">3-day average</div>
+      </div>
+      <div class="network-card">
+        <div class="label">Next Difficulty</div>
+        <div class="value" id="net-difficulty-val"><span class="net-loading">…</span></div>
+        <div class="sub" id="net-difficulty-sub"><span class="net-loading">…</span></div>
+      </div>
+      <div class="network-card">
+        <div class="label">Hash Price</div>
+        <div class="value" id="net-hashprice-val"><span class="net-loading">…</span></div>
+        <div class="sub">est. $/PH/day</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="tab-roi">ROI</button>
+    <button class="tab-btn" data-tab="tab-hashrate">Hashrate Heating</button>
+    <button class="tab-btn" data-tab="tab-definitions">Definitions</button>
+  </div>
+
+  <!-- ═══ ROI TAB ═══ -->
+  <div id="tab-roi" class="tab-panel active">
+
+  <!-- Heating Offset Toggle -->
+  <div class="heating-offset-toggle-row" id="heating-offset-toggle-row">
+    <label class="toggle-switch">
+      <input type="checkbox" id="heating-offset-toggle" onchange="onHeatingOffsetToggle()">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="toggle-label">Include heating offset in ROI</span>
+    <span class="toggle-sub" id="heating-offset-toggle-sub">Configure heating settings to enable</span>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Total Earned</div>
+      <div class="value" id="summary-earned">0</div>
+      <div class="sub">sats from payouts</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total Spent</div>
+      <div class="value" id="summary-spent">0</div>
+      <div class="sub">sats (elec + hardware)</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Net Balance</div>
+      <div class="value" id="summary-net">0</div>
+      <div class="sub" id="summary-net-sub">sats net</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">ROI</div>
+      <div class="value" id="summary-roi">—</div>
+      <div class="sub">net / total spent × 100</div>
+    </div>
+    <div class="summary-card" id="proj-breakeven-card">
+      <div class="label">Proj. Break-Even</div>
+      <div class="value summary-date-val" id="proj-breakeven-val">—</div>
+      <div class="sub" id="proj-breakeven-sub">simple projection</div>
+    </div>
+    <div class="summary-card" id="proj-rate-card">
+      <div class="label">Avg Sats / Day</div>
+      <div class="value" id="proj-rate-val">—</div>
+      <div class="sub">from payout history</div>
+    </div>
+    <div class="summary-card" id="proj-adv-card" style="display:none">
+      <div class="label">Adv. Break-Even</div>
+      <div class="value summary-date-val" id="proj-adv-val">—</div>
+      <div class="sub" id="proj-adv-sub">hashrate-adjusted</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-wrap">
+    <h3>Historical Sats Balance</h3>
+    <div class="chart-container">
+      <canvas id="roi-chart"></canvas>
+    </div>
+    <div class="breakeven-caption" id="breakeven-caption"></div>
+  </div>
+
+  <!-- Projection Panel -->
+  <div class="proj-panel" id="proj-panel">
+    <h3>🔮 Break-Even Projection</h3>
+    <div class="proj-gate" id="proj-gate">⛏ Add at least 3 payout entries to generate a projection.</div>
+    <div class="proj-achieved" id="proj-achieved">
+      <div class="proj-achieved-inner">
+        <span class="proj-achieved-icon">⚡</span>
+        <div class="proj-achieved-title">Break-even achieved</div>
+        <div class="proj-achieved-date" id="proj-achieved-date"></div>
+        <div class="proj-achieved-balance" id="proj-achieved-balance"></div>
+        <div class="proj-achieved-balance-sub">in profit</div>
+      </div>
+    </div>
+    <div id="proj-chart-wrap" style="display:none; margin-top:1.25rem;">
+      <div class="chart-container">
+        <canvas id="projChart"></canvas>
+      </div>
+    </div>
+    <div class="adv-section" id="adv-section" style="display:none">
+      <button class="btn-secondary" id="adv-toggle-btn" onclick="toggleAdvancedSection()" style="align-self:flex-start">
+        ▸ Advanced Projection (hashrate-adjusted)
+      </button>
+      <div class="adv-inner" id="adv-inner" style="display:none">
+        <div class="form-row">
+          <!-- NOTE: The hashrate value itself isn't used in the projection math —
+               historical avg sats/day already encodes your hashrate implicitly.
+               This field gates the difficulty-adjustment fetch. A future enhancement
+               could use TH/s + network hashrate to model earnings from first principles. -->
+          <label>Total Hashrate</label>
+          <div class="hashrate-input-row">
+            <input type="number" id="hashrate-input" placeholder="e.g. 335" min="0.000001" step="any"
+                   oninput="onHashrateChange()">
+            <select id="hashrate-unit" class="hashrate-unit-select" onchange="onHashrateUnitChange()">
+              <option value="TH/s">TH/s</option>
+              <option value="PH/s">PH/s</option>
+              <option value="EH/s">EH/s</option>
+            </select>
+          </div>
+        </div>
+        <div class="adv-status" id="adv-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Settings: Total Hashrate -->
+  <div class="roi-global-settings">
+    <span class="roi-global-settings-label">⚙ Global</span>
+    <div class="roi-settings-field">
+      <label for="roi-hashrate-input">Total Hashrate</label>
+      <div class="hashrate-input-row">
+        <input type="number" id="roi-hashrate-input" placeholder="e.g. 335" min="0.000001" step="any"
+               oninput="onRoiHashrateChange()">
+        <select id="roi-hashrate-unit" class="hashrate-unit-select" onchange="onRoiHashrateUnitChange()">
+          <option value="TH/s">TH/s</option>
+          <option value="PH/s">PH/s</option>
+          <option value="EH/s">EH/s</option>
+        </select>
+      </div>
+      <span class="form-help">Your total mining hashrate across all hardware.</span>
+    </div>
+  </div>
+
+  <!-- Pool Sync -->
+  <div class="pool-sync" id="pool-sync">
+    <button class="pool-sync-btn" onclick="togglePoolSync()">
+      ⛓ Pool Sync
+      <span class="pool-sync-arrow" id="pool-sync-arrow">▾</span>
+    </button>
+    <div class="pool-sync-body">
+      <div class="form-row">
+        <label for="ocean-address">OCEAN Pool Address</label>
+        <input type="text" id="ocean-address" placeholder="bc1q... or 1... or 3..." autocomplete="off" spellcheck="false">
+        <span class="form-help">Your Bitcoin payout address registered with OCEAN pool.</span>
+      </div>
+      <div class="pool-sync-date-row">
+        <div class="form-row" style="margin:0">
+          <label>From</label>
+          <input type="date" id="sync-from">
+        </div>
+        <div class="form-row" style="margin:0">
+          <label>To</label>
+          <input type="date" id="sync-to">
+        </div>
+      </div>
+      <button class="btn-add" id="sync-btn" onclick="syncOceanPayouts()">
+        <span class="spinner" id="sync-spinner"></span>
+        Sync Payouts from OCEAN
+      </button>
+      <div class="pool-sync-status" id="sync-status"></div>
+    </div>
+  </div>
+
+  <!-- Entry Forms -->
+  <div class="forms-grid">
+
+    <!-- Payouts -->
+    <div class="entry-form payout-form">
+      <h3><span class="dot"></span>Add Payout</h3>
+      <div class="form-row">
+        <label>Date</label>
+        <input type="date" id="payout-date">
+      </div>
+      <div class="form-row">
+        <label>Amount (sats)</label>
+        <input type="number" id="payout-amount" placeholder="e.g. 50000" min="1" step="1">
+      </div>
+      <div class="form-row">
+        <label>Notes (optional)</label>
+        <textarea id="payout-notes" placeholder="Pool payout, OCEAN, etc."></textarea>
+      </div>
+      <div class="form-error" id="payout-error"></div>
+      <button class="btn-add" id="payout-btn" onclick="addPayout()">
+        <span class="spinner" id="payout-spinner"></span>
+        Add Payout
+      </button>
+    </div>
+
+    <!-- Electricity -->
+    <div class="entry-form electricity-form">
+      <h3><span class="dot"></span>Add Electricity Cost</h3>
+      <div class="form-row">
+        <label>Date</label>
+        <input type="date" id="elec-date">
+      </div>
+      <div class="form-row">
+        <label>Amount (USD)</label>
+        <input type="number" id="elec-amount" placeholder="e.g. 45.00" min="0.01" step="0.01">
+      </div>
+      <div class="form-row">
+        <label>Notes (optional)</label>
+        <textarea id="elec-notes" placeholder="Monthly bill, partial, etc."></textarea>
+      </div>
+      <div class="form-error" id="elec-error"></div>
+      <button class="btn-add" id="elec-btn" onclick="addElectricity()">
+        <span class="spinner" id="elec-spinner"></span>
+        Add Electricity Cost
+      </button>
+    </div>
+
+    <!-- Hardware -->
+    <div class="entry-form hardware-form">
+      <h3><span class="dot"></span>Add Hardware Purchase</h3>
+      <div class="form-row">
+        <label>Date</label>
+        <input type="date" id="hw-date">
+      </div>
+      <div class="form-row">
+        <label>Currency</label>
+        <div class="currency-row">
+          <div class="form-row" style="margin:0">
+            <select id="hw-currency">
+              <option value="usd">USD</option>
+              <option value="sats">Sats</option>
+            </select>
+          </div>
+          <div class="form-row" style="margin:0">
+            <input type="number" id="hw-amount" placeholder="Amount" min="1" step="any">
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Notes (optional)</label>
+        <textarea id="hw-notes" placeholder="S19, Whatsminer, PSU, etc."></textarea>
+      </div>
+      <div class="form-error" id="hw-error"></div>
+      <button class="btn-add" id="hw-btn" onclick="addHardware()">
+        <span class="spinner" id="hw-spinner"></span>
+        Add Hardware Purchase
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Entries Table -->
+  <div class="table-section">
+    <div class="table-header">
+      <h3>All Entries</h3>
+      <div class="table-actions">
+        <button class="btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn-secondary" onclick="document.getElementById('csv-import-input').click()">⬆ Import CSV</button>
+        <input type="file" id="csv-import-input" accept=".csv" onchange="importCSV(event)">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th class="notes-cell">Notes</th>
+            <th>USD Amount</th>
+            <th>BTC Price</th>
+            <th>Sats Value</th>
+            <th>Running Balance</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="entries-tbody">
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <span class="icon">⛏</span>
+                No entries yet. Add your first payout or cost above.
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  </div><!-- /#tab-roi -->
+
+  <!-- ═══ HASHRATE HEATING TAB ═══ -->
+  <div id="tab-hashrate" class="tab-panel">
+
+    <!-- No electricity data yet -->
+    <div id="heating-no-data" class="coming-soon-card" style="display:none">
+      <span class="cs-icon">⚡</span>
+      <h3>No Electricity Data Found</h3>
+      <p>Add electricity payments in the ROI tab to calculate your heating offset.</p>
+    </div>
+
+    <!-- Main heating content -->
+    <div id="heating-main">
+
+      <p style="color:var(--text-muted); font-size:0.95rem; line-height:1.7; margin-bottom:1.5rem;">
+        Bitcoin miners convert nearly 100% of their electricity into heat. If you're already heating a space, that heat has real dollar value — it's replacing energy you would have paid for anyway. This calculator estimates your heating offset and shows your true mining cost after accounting for it. You'll need your electricity rate, your heating fuel type and cost, and how many months per year your miners are actively replacing heat.
+      </p>
+      <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.5rem;">Use <a href="https://calc.exergyheat.com" target="_blank" rel="noopener" style="color:var(--amber);">Exergy's calculator</a> to model whether hashrate heating makes sense for your situation — then track your actual results here.</p>
+
+      <!-- ── Inputs panel ── -->
+      <div class="heating-panel">
+        <h3 class="heating-section-title">⚙ Heating Settings</h3>
+        <div class="heating-inputs-grid">
+
+          <!-- Heating months slider -->
+          <div class="form-row">
+            <label>Months of useful heat per year</label>
+            <div class="heating-slider-row">
+              <input type="range" id="h-months-slider" min="1" max="12" step="1" value="6"
+                     oninput="onHeatingMonthsChange(this.value)">
+              <span id="h-months-display" class="heating-slider-val">6</span>
+            </div>
+            <span class="form-help">How many months per year are your miners actively replacing heat you'd otherwise pay for?</span>
+          </div>
+
+          <!-- Fuel type -->
+          <div class="form-row">
+            <label>Heating fuel type</label>
+            <select id="h-fuel-type" onchange="onFuelTypeChange()">
+              <option value="electric">Electric resistance (100% efficiency)</option>
+              <option value="heatpump">Heat pump (300% COP — typical)</option>
+              <option value="gas">Natural gas furnace (80% AFUE)</option>
+              <option value="propane">Propane (80% efficiency)</option>
+              <option value="oil">Heating oil (85% efficiency)</option>
+              <option value="pellets">Wood pellets (85% efficiency)</option>
+            </select>
+          </div>
+
+          <!-- Electricity rate (used for mining cost; also heating cost when fuel is electric/heat pump) -->
+          <div class="form-row">
+            <label>Electricity rate ($/kWh)</label>
+            <input type="number" id="h-elec-rate" placeholder="e.g. 0.07" min="0" step="0.001"
+                   oninput="recalcHeating()">
+            <span class="form-help">What you pay per kWh for mining electricity.</span>
+          </div>
+
+          <!-- Region — auto-fills fuel cost with regional default -->
+          <div class="form-row" id="h-region-row">
+            <label>Region (optional)</label>
+            <select id="h-region" onchange="onRegionChange()">
+              <option value="">-- Enter manually --</option>
+              <optgroup label="New England">
+                <option value="ME">Maine (ME)</option>
+                <option value="NH">New Hampshire (NH)</option>
+                <option value="VT">Vermont (VT)</option>
+                <option value="MA">Massachusetts (MA)</option>
+                <option value="RI">Rhode Island (RI)</option>
+                <option value="CT">Connecticut (CT)</option>
+              </optgroup>
+              <optgroup label="Mid-Atlantic">
+                <option value="NY">New York (NY)</option>
+                <option value="NJ">New Jersey (NJ)</option>
+                <option value="PA">Pennsylvania (PA)</option>
+                <option value="DE">Delaware (DE)</option>
+                <option value="MD">Maryland (MD)</option>
+                <option value="DC">Washington DC (DC)</option>
+              </optgroup>
+              <optgroup label="Southeast">
+                <option value="VA">Virginia (VA)</option>
+                <option value="WV">West Virginia (WV)</option>
+                <option value="KY">Kentucky (KY)</option>
+                <option value="NC">North Carolina (NC)</option>
+                <option value="SC">South Carolina (SC)</option>
+                <option value="GA">Georgia (GA)</option>
+                <option value="FL">Florida (FL)</option>
+                <option value="AL">Alabama (AL)</option>
+                <option value="MS">Mississippi (MS)</option>
+                <option value="TN">Tennessee (TN)</option>
+              </optgroup>
+              <optgroup label="Midwest">
+                <option value="OH">Ohio (OH)</option>
+                <option value="IN">Indiana (IN)</option>
+                <option value="IL">Illinois (IL)</option>
+                <option value="MI">Michigan (MI)</option>
+                <option value="WI">Wisconsin (WI)</option>
+                <option value="MN">Minnesota (MN)</option>
+                <option value="IA">Iowa (IA)</option>
+                <option value="MO">Missouri (MO)</option>
+                <option value="ND">North Dakota (ND)</option>
+                <option value="SD">South Dakota (SD)</option>
+                <option value="NE">Nebraska (NE)</option>
+                <option value="KS">Kansas (KS)</option>
+              </optgroup>
+              <optgroup label="South Central">
+                <option value="TX">Texas (TX)</option>
+                <option value="OK">Oklahoma (OK)</option>
+                <option value="AR">Arkansas (AR)</option>
+                <option value="LA">Louisiana (LA)</option>
+              </optgroup>
+              <optgroup label="Mountain">
+                <option value="MT">Montana (MT)</option>
+                <option value="ID">Idaho (ID)</option>
+                <option value="WY">Wyoming (WY)</option>
+                <option value="CO">Colorado (CO)</option>
+                <option value="UT">Utah (UT)</option>
+                <option value="NV">Nevada (NV)</option>
+                <option value="AZ">Arizona (AZ)</option>
+                <option value="NM">New Mexico (NM)</option>
+              </optgroup>
+              <optgroup label="Pacific">
+                <option value="WA">Washington (WA)</option>
+                <option value="OR">Oregon (OR)</option>
+                <option value="CA">California (CA)</option>
+              </optgroup>
+              <optgroup label="Non-contiguous">
+                <option value="AK">Alaska (AK)</option>
+                <option value="HI">Hawaii (HI)</option>
+              </optgroup>
+              <optgroup label="Canada">
+                <option value="CA_CAN">Canada (avg)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- Heating fuel cost — only shown for gas/propane/oil/pellets -->
+          <div class="form-row" id="h-cost-row">
+            <label id="h-cost-label">Heating fuel cost</label>
+            <input type="number" id="h-cost" placeholder="e.g. 1.20" min="0" step="0.001"
+                   oninput="recalcHeating()">
+          </div>
+
+          <!-- Miner preset -->
+          <div class="form-row">
+            <label>Miner Preset</label>
+            <select id="h-miner-preset" onchange="onMinerPresetChange()">
+              <option value="">Custom</option>
+              <optgroup label="Antminer">
+                <option value="antminer-s19">Antminer S19</option>
+                <option value="antminer-s19-pro">Antminer S19 Pro</option>
+                <option value="antminer-s19j-pro">Antminer S19j Pro</option>
+                <option value="antminer-s19-xp">Antminer S19 XP</option>
+                <option value="antminer-s21plus">Antminer S21+</option>
+                <option value="antminer-s21pro">Antminer S21 Pro</option>
+                <option value="antminer-s21xp-hydro">Antminer S21 XP Hydro</option>
+              </optgroup>
+              <optgroup label="Canaan">
+                <option value="avalon-mini3-night">Avalon Mini3 — Night (24.7 TH/s, 430W)</option>
+                <option value="avalon-mini3-eco">Avalon Mini3 — Heater Eco (29.4 TH/s, 541W)</option>
+                <option value="avalon-mini3-super">Avalon Mini3 — Heater Super (39.8 TH/s, 784W)</option>
+                <option value="avalon-mini3">Avalon Mini3 — Mining Max (39.5 TH/s, 778W)</option>
+                <option value="avalon-q-eco">Avalon Q — Eco (~54 TH/s, 838W)</option>
+                <option value="avalon-q-standard">Avalon Q — Standard (~80 TH/s, 1375W)</option>
+                <option value="avalon-q-super">Avalon Q — Super / Max (90 TH/s, 1674W)</option>
+                <option value="avalon-a15">Avalon A15</option>
+              </optgroup>
+              <optgroup label="MicroBT">
+                <option value="whatsminer-m66s-hydro">Whatsminer M66S Hydro</option>
+              </optgroup>
+              <optgroup label="Heating Miners">
+                <option value="heatbit-trio">Heatbit Trio</option>
+                <option value="heatbit-mini">Heatbit Mini</option>
+              </optgroup>
+            </select>
+            <span class="form-help">Select your hardware to auto-fill wattage and hashrate.</span>
+          </div>
+
+          <!-- Miner wattage (informational) -->
+          <div class="form-row">
+            <label>Total miner wattage (W)</label>
+            <input type="number" id="h-wattage" placeholder="e.g. 3450" min="1" step="1"
+                   oninput="recalcHeating()">
+            <span class="form-help">Combined power draw of all mining hardware.</span>
+          </div>
+
+          <!-- Heating Hashrate -->
+          <div class="form-row">
+            <label>Heating Hashrate</label>
+            <div class="hashrate-input-row">
+              <input type="number" id="h-heating-hashrate" placeholder="e.g. 200" min="0" step="any"
+                     oninput="recalcHeating()">
+              <select id="h-heating-hashrate-unit" class="hashrate-unit-select" onchange="recalcHeating()">
+                <option value="TH/s">TH/s</option>
+                <option value="PH/s">PH/s</option>
+                <option value="EH/s">EH/s</option>
+              </select>
+            </div>
+            <span class="form-help">Hashrate from miners actively used for space heating. Used to calculate what proportion of your electricity produces useful heat.</span>
+            <span class="form-help" id="h-heating-hashrate-note" style="display:none; color:var(--amber-dim); margin-top:.3rem;">&#9888; Enter your total hashrate in the ROI tab for a proportional calculation.</span>
+          </div>
+
+        </div><!-- /.heating-inputs-grid -->
+      </div><!-- /.heating-panel -->
+
+      <!-- ── Results panel ── -->
+      <div id="heating-results-panel" style="display:none">
+        <div class="heating-results-grid">
+          <div class="summary-card">
+            <div class="label">Heating Offset (USD)</div>
+            <div class="value" id="h-offset-usd">—</div>
+            <div class="sub">total heating cost saved</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Heating Offset (sats)</div>
+            <div class="value" id="h-offset-sats">—</div>
+            <div class="sub" id="h-offset-sats-sub">at avg BTC price</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Effective Electricity Rate</div>
+            <div class="value" id="h-eff-rate">—</div>
+            <div class="sub">$/kWh after heating offset</div>
+          </div>
+          <div class="summary-card">
+            <div class="label">Adjusted Break-Even</div>
+            <div class="value summary-date-val" id="h-adj-breakeven">—</div>
+            <div class="sub" id="h-adj-breakeven-sub">with heating savings</div>
+          </div>
+          <div class="summary-card" id="cope-card">
+            <div class="label">COPe</div>
+            <div class="value" id="cope-val">—</div>
+            <div class="sub">Economic COP vs. electric resistance</div>
+          </div>
+        </div><!-- /.heating-results-grid -->
+        <p class="heating-note">🌡️ Heating offset reduces your true mining cost. The adjusted break-even reflects what you'd see in the ROI tab if heating savings were counted as income.</p>
+      </div><!-- /#heating-results-panel -->
+
+      <!-- ── Mode toggle ── -->
+      <div class="heating-toggle-wrap" id="heating-toggle-wrap">
+        <button class="btn-heating-mode" id="heating-mode-btn" onclick="toggleHeatingMode()">
+          Switch to Detailed Mode
+        </button>
+      </div>
+
+      <!-- ── Detailed mode panel ── -->
+      <div id="heating-detailed-panel" style="display:none">
+        <div class="heating-panel">
+          <h3 class="heating-section-title">📅 Monthly Heating Breakdown</h3>
+          <p style="font-size:.9rem;color:var(--text-muted);margin-bottom:1.25rem">Adjust the heating fraction for each month. Pre-filled from your Heating Months setting — override per month as needed.</p>
+
+          <div class="table-section" style="margin-bottom:1.5rem">
+            <div class="table-wrap">
+              <table id="h-monthly-table">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Heating %</th>
+                    <th>Heat Produced (kWh)</th>
+                    <th>Offset (USD)</th>
+                    <th>Offset (sats)</th>
+                    <th>Eff. Rate ($/kWh)</th>
+                  </tr>
+                </thead>
+                <tbody id="h-monthly-tbody"></tbody>
+                <tfoot id="h-monthly-tfoot"></tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div class="heating-detailed-settings">
+            <div class="form-row">
+              <label id="h-eff-override-label">Appliance efficiency override</label>
+              <input type="number" id="h-eff-override" placeholder="Leave blank for default"
+                     min="0.01" step="0.01" oninput="recalcHeating()">
+              <span class="form-help">COP for electric/heat pump (e.g. 3.0) or AFUE % for gas/propane/oil (e.g. 80). Leave blank to use defaults.</span>
+            </div>
+            <div class="form-row">
+              <label>Space type</label>
+              <select id="h-space-type" onchange="recalcHeating()">
+                <option value="spot">Spot heat — miner in lived-in space (~95% usable)</option>
+                <option value="ducted">Ducted — heat fed into duct system (~85% effective)</option>
+                <option value="crawl">Crawl space / utility room (~60% reaches living space)</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn-secondary" onclick="exportHeatingCSV()" style="margin-top:1.25rem">
+            ⬇ Export Heating Data
+          </button>
+
+        </div><!-- /.heating-panel detailed -->
+      </div><!-- /#heating-detailed-panel -->
+
+      <!-- How It Works -->
+      <div class="how-it-works" id="how-it-works">
+        <button class="how-it-works-btn" onclick="toggleHowItWorks()">
+          How It Works
+          <span class="how-it-works-arrow" id="how-it-works-arrow">▾</span>
+        </button>
+        <div class="how-it-works-body">
+          <ol class="hiw-steps">
+            <li class="hiw-step">
+              <span class="hiw-num">1</span>
+              <span class="hiw-text"><strong>Your miners run at ~100% thermal efficiency.</strong> Every watt of electricity they consume becomes heat. A 3,450W mining rig produces 3,450W of heat &mdash; the same as a 3,450W electric space heater.</span>
+            </li>
+            <li class="hiw-step">
+              <span class="hiw-num">2</span>
+              <span class="hiw-text"><strong>We calculate total kWh consumed</strong> from your electricity payment entries in the ROI tab. Total kWh = total electricity paid ($) &divide; your electricity rate ($/kWh).</span>
+            </li>
+            <li class="hiw-step">
+              <span class="hiw-num">3</span>
+              <span class="hiw-text"><strong>We apply your heating hashrate ratio.</strong> If you're running 500 TH/s total but only 200 TH/s is in a heated space, only 40% of your electricity produces useful heat. This gives us your heating kWh.</span>
+            </li>
+            <li class="hiw-step">
+              <span class="hiw-num">4</span>
+              <span class="hiw-text"><strong>We apply your heating season.</strong> If your miners only replace heat for 6 months of the year, we multiply the heating kWh by 6/12. Heat produced in summer when you don't need it doesn't offset anything.</span>
+            </li>
+            <li class="hiw-step">
+              <span class="hiw-num">5</span>
+              <span class="hiw-text"><strong>We calculate what that heat would have cost</strong> using your existing heating system. A gas furnace running at 80% efficiency costs more per kWh of heat delivered than electric resistance. We use standard efficiency factors for each fuel type to find the equivalent dollar cost.</span>
+            </li>
+            <li class="hiw-step">
+              <span class="hiw-num">6</span>
+              <span class="hiw-text"><strong>That dollar amount is your heating offset</strong> &mdash; real money you didn't have to spend on heat because your miners covered it.</span>
+            </li>
+            <li class="hiw-step">
+              <span class="hiw-num">7</span>
+              <span class="hiw-text"><strong>We convert the offset to sats</strong> using the average BTC price across your historical electricity payment dates. This shows the true impact on your sats-denominated mining ROI.</span>
+            </li>
+            <li class="hiw-step">
+              <span class="hiw-num">8</span>
+              <span class="hiw-text"><strong>Your adjusted break-even</strong> subtracts the heating offset (in sats) from your total costs, then re-runs the break-even projection. This is what your ROI tab would show if you counted heat savings as mining income.</span>
+            </li>
+          </ol>
+
+        </div>
+      </div>
+
+    </div><!-- /#heating-main -->
+
+  </div><!-- /#tab-hashrate -->
+
+  <!-- ═══ DEFINITIONS TAB ═══ -->
+  <div id="tab-definitions" class="tab-panel">
+    <p class="definitions-intro">A reference guide to every metric and term used in this calculator.</p>
+    <div class="definitions-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:200px">Term</th>
+            <th>Definition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="def-term">Sats</td>
+            <td>Short for satoshis — the smallest unit of bitcoin. 1 bitcoin = 100,000,000 sats. All values in this calculator are denominated in sats.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Payout</td>
+            <td>Sats received from your mining pool as a reward for contributing hashrate to the network.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Electricity Cost</td>
+            <td>The USD amount paid for electricity used by your miners, converted to sats at the bitcoin price on the payment date.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Hardware Cost</td>
+            <td>The USD or sats cost of mining equipment, converted to sats at the bitcoin price on the purchase date if paid in USD.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Historical BTC Price</td>
+            <td>The market price of bitcoin on a specific past date, fetched from CoinGecko's public API. Used to convert USD expenses to their sats equivalent at the time of the transaction.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Running Balance</td>
+            <td>The cumulative sats balance at any point in time: total sats earned minus total sats spent (electricity + hardware), calculated chronologically.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Total Earned</td>
+            <td>The sum of all payout entries in sats.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Total Spent</td>
+            <td>The sum of all electricity and hardware costs converted to sats.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Net Balance</td>
+            <td>Total earned minus total spent. A positive number means you are profitable in sats terms. A negative number means you have not yet recovered your costs.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Break-Even</td>
+            <td>The point at which your net sats balance crosses from negative to positive — meaning your mining operation has returned more sats than it cost.</td>
+          </tr>
+          <tr>
+            <td class="def-term">ROI %</td>
+            <td>Return on investment expressed as a percentage: (Net Balance ÷ Total Spent) × 100. A positive ROI means you have earned back more than you spent.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Avg Sats / Day</td>
+            <td>Your average daily earning rate, calculated from your payout history: total sats earned divided by the number of days between your first and last payout.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Projected Break-Even</td>
+            <td>An estimate of when your running balance will reach zero based on your average historical earning rate. Requires at least 3 payout entries.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Hashrate-Adjusted Projection</td>
+            <td>A break-even projection that accounts for the next expected network difficulty adjustment, fetched live from the mempool.757btc.org API. More accurate than the simple projection when a difficulty change is imminent.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Network Difficulty</td>
+            <td>A measure of how hard it is to find a valid bitcoin block. Adjusts every ~2,016 blocks (~2 weeks) to keep block times near 10 minutes. Higher difficulty means each unit of hashrate earns fewer sats.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Difficulty Adjustment</td>
+            <td>The percentage change in network difficulty at the next retarget epoch. A positive value means difficulty is increasing (earnings will decrease). A negative value means difficulty is decreasing (earnings will increase).</td>
+          </tr>
+          <tr>
+            <td class="def-term">Hashrate (TH/s)</td>
+            <td>Terahashes per second — a measure of your mining hardware's computational power. Used in the hashrate-adjusted projection to calculate your expected share of block rewards.</td>
+          </tr>
+          <tr>
+            <td class="def-term">Heating Offset</td>
+            <td>The dollar value of heat produced by your miners that replaces heat you would have otherwise paid for. Converting this to sats reduces your effective electricity cost and improves your true ROI. (Hashrate Heating tab)</td>
+          </tr>
+          <tr>
+            <td class="def-term">Effective Electricity Rate</td>
+            <td>Your true cost per kWh after subtracting the heating offset. A lower effective rate improves mining profitability. (Hashrate Heating tab)</td>
+          </tr>
+          <tr>
+            <td class="def-term">COPe</td>
+            <td>Economic Coefficient of Performance. Measures total value delivered per dollar of electricity: (heating offset + mining revenue) &divide; electricity cost. A COPe above 1 means your miners deliver more value than a standard electric heater would with the same electricity.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /#tab-definitions -->
+
+</div>
+
+<!-- Manual Price Modal -->
+<div class="modal-overlay" id="manual-price-modal">
+  <div class="modal">
+    <h3>CoinGecko API Unavailable</h3>
+    <p id="modal-desc">Couldn't fetch the BTC price for <strong id="modal-date-display"></strong>. Enter it manually to continue.</p>
+    <div class="form-row">
+      <label>BTC Price on that date (USD)</label>
+      <input type="number" id="manual-price-input" placeholder="e.g. 65000" min="1" step="1">
+    </div>
+    <div class="form-error" id="modal-error"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modal-cancel-btn">Cancel</button>
+      <button class="btn-confirm" id="modal-confirm-btn">Use This Price</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+const LS_KEY = 'bmc_mining_entries';
+let entries = [];  // [{id, date, type, notes, usd_amount, btc_price, sats_value}]
+let roiChart = null;
+let projChart = null;
+// Projection state
+let advancedSectionOpen = false;
+let advancedDiffData = null;
+let lastHashrate = null;
+let hashrateDebounce = null;
+// Heating offset toggle
+let heatingOffsetInRoi = false;
+window.currentHeatingOffsetSats = 0;
+
+/* ═══════════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════════ */
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(entries)); } catch(e) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) entries = JSON.parse(raw);
+  } catch(e) { entries = []; }
+}
+
+/* ═══════════════════════════════════════════════
+   COINGECKO API
+═══════════════════════════════════════════════ */
+async function fetchBtcPrice(dateStr) {
+  // dateStr = YYYY-MM-DD → DD-MM-YYYY for CoinGecko
+  const [y, m, d] = dateStr.split('-');
+  const cgDate = `${d}-${m}-${y}`;
+  const url = `https://api.coingecko.com/api/v3/coins/bitcoin/history?date=${cgDate}&localization=false`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  const price = data?.market_data?.current_price?.usd;
+  if (!price) throw new Error('No price in response');
+  return price;
+}
+
+/* ═══════════════════════════════════════════════
+   MANUAL PRICE MODAL
+═══════════════════════════════════════════════ */
+let manualResolve = null;
+let manualReject = null;
+
+function askManualPrice(dateStr) {
+  return new Promise((resolve, reject) => {
+    manualResolve = resolve;
+    manualReject = reject;
+    document.getElementById('modal-date-display').textContent = formatDate(dateStr);
+    document.getElementById('manual-price-input').value = '';
+    document.getElementById('modal-error').textContent = '';
+    document.getElementById('modal-error').classList.remove('visible');
+    document.getElementById('manual-price-modal').classList.add('open');
+  });
+}
+
+document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+  const val = parseFloat(document.getElementById('manual-price-input').value);
+  if (!val || val <= 0) {
+    document.getElementById('modal-error').textContent = 'Please enter a valid BTC price.';
+    document.getElementById('modal-error').classList.add('visible');
+    return;
+  }
+  document.getElementById('manual-price-modal').classList.remove('open');
+  if (manualResolve) manualResolve(val);
+});
+
+document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+  document.getElementById('manual-price-modal').classList.remove('open');
+  if (manualReject) manualReject(new Error('cancelled'));
+});
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════ */
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function fmtSats(n) {
+  return n.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' sats';
+}
+function fmtSatsShort(n) {
+  return (n >= 0 ? '+' : '') + n.toLocaleString(undefined, {maximumFractionDigits: 0});
+}
+function fmtUsd(n) {
+  if (!n && n !== 0) return '—';
+  return '$' + parseFloat(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+function fmtBtcPrice(n) {
+  if (!n && n !== 0) return '—';
+  return '$' + parseFloat(n).toLocaleString(undefined, {maximumFractionDigits: 0});
+}
+function formatDate(dateStr) {
+  // dateStr = YYYY-MM-DD
+  const [y, m, d] = dateStr.split('-');
+  return `${m}/${d}/${y}`;
+}
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function clearError(id) {
+  const el = document.getElementById(id);
+  el.textContent = '';
+  el.classList.remove('visible');
+}
+function setLoading(btnId, spinnerId, loading) {
+  const btn = document.getElementById(btnId);
+  const sp = document.getElementById(spinnerId);
+  btn.disabled = loading;
+  btn.classList.toggle('loading', loading);
+  sp.style.display = loading ? 'block' : 'none';
+}
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function usdToSats(usd, btcPrice) {
+  // 1 BTC = 100,000,000 sats; sats = (usd / btcPrice) * 1e8
+  return Math.round((usd / btcPrice) * 1e8);
+}
+
+function sortedEntries() {
+  return [...entries].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function computeRunningBalances(sorted) {
+  let running = 0;
+  return sorted.map(e => {
+    running += e.sats_value;
+    return running;
+  });
+}
+
+/* ═════════════════════════════════════════════
+   PROJECTION HELPERS
+═════════════════════════════════════════════ */
+function getPayoutEntries() {
+  return sortedEntries().filter(e => e.type === 'payout');
+}
+
+function computeAvgSatsPerDay(payouts) {
+  if (payouts.length === 0) return 0;
+  const total = payouts.reduce((s, e) => s + e.sats_value, 0);
+  if (payouts.length === 1) return total; // single point: treat as per-day rate
+  const first = new Date(payouts[0].date + 'T00:00:00');
+  const last  = new Date(payouts[payouts.length - 1].date + 'T00:00:00');
+  const days  = Math.max(1, (last - first) / (1000 * 60 * 60 * 24));
+  return total / days;
+}
+
+
+function dateStrAddDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + Math.round(days));
+  return d.toISOString().slice(0, 10);
+}
+
+function daysBetween(d1, d2) {
+  const a = new Date(d1 + 'T00:00:00');
+  const b = new Date(d2 + 'T00:00:00');
+  return (b - a) / (1000 * 60 * 60 * 24);
+}
+
+// Returns { breakEvenDate, alreadyBreakEven, endOfRange, points:[{date,balance}] }
+function computeProjectionPoints(startDate, startBalance, ratePerDay, maxDays = 365) {
+  if (ratePerDay <= 0) return null;
+  if (startBalance >= 0) {
+    return { alreadyBreakEven: true, breakEvenDate: null, endOfRange: false, points: [] };
+  }
+  const daysToZero = -startBalance / ratePerDay;
+  if (daysToZero > maxDays) {
+    const endDate    = dateStrAddDays(startDate, maxDays);
+    const endBalance = startBalance + ratePerDay * maxDays;
+    return {
+      alreadyBreakEven: false, breakEvenDate: null, endOfRange: true,
+      points: [
+        { date: startDate, balance: startBalance },
+        { date: endDate,   balance: endBalance   }
+      ]
+    };
+  }
+  const breakEvenDate = dateStrAddDays(startDate, daysToZero);
+  return {
+    alreadyBreakEven: false, breakEvenDate, endOfRange: false,
+    points: [
+      { date: startDate,    balance: startBalance },
+      { date: breakEvenDate, balance: 0 }
+    ]
+  };
+}
+
+// difficultyChange is percent (positive = harder = less earnings)
+function computeAdvancedRate(baseRatePerDay, difficultyChange) {
+  const factor = 1 / (1 + difficultyChange / 100);
+  return baseRatePerDay * factor;
+}
+
+/* ═══════════════════════════════════════════════
+   HASHRATE UNIT HELPERS
+═══════════════════════════════════════════════ */
+function convertHashrateToTH(val, unit) {
+  if (!val || isNaN(val) || val <= 0) return 0;
+  if (unit === 'PH/s') return val * 1000;
+  if (unit === 'EH/s') return val * 1000000;
+  return val; // TH/s
+}
+function convertHashrateFromTH(thVal, unit) {
+  if (unit === 'PH/s') return thVal / 1000;
+  if (unit === 'EH/s') return thVal / 1000000;
+  return thVal; // TH/s
+}
+
+// Returns total hashrate in TH/s from the ROI tab input (0 if not set)
+function getRoiHashrateTH() {
+  const inputEl = document.getElementById('roi-hashrate-input');
+  const unitEl  = document.getElementById('roi-hashrate-unit');
+  if (!inputEl) return 0;
+  const raw = parseFloat(inputEl.value);
+  if (!raw || raw <= 0) return 0;
+  return convertHashrateToTH(raw, unitEl ? unitEl.value : 'TH/s');
+}
+
+// Returns heating hashrate in TH/s from the heating tab input (0 if not set)
+function getHeatingHashrateTH() {
+  const inputEl = document.getElementById('h-heating-hashrate');
+  const unitEl  = document.getElementById('h-heating-hashrate-unit');
+  if (!inputEl) return 0;
+  const raw = parseFloat(inputEl.value);
+  if (!raw || raw <= 0) return 0;
+  return convertHashrateToTH(raw, unitEl ? unitEl.value : 'TH/s');
+}
+
+/* ═══════════════════════════════════════════════
+   ROI HASHRATE (GLOBAL SETTING)
+═══════════════════════════════════════════════ */
+function saveRoiHashrate() {
+  const inputEl = document.getElementById('roi-hashrate-input');
+  const unitEl  = document.getElementById('roi-hashrate-unit');
+  if (!inputEl) return;
+  const raw  = parseFloat(inputEl.value);
+  const unit = unitEl ? unitEl.value : 'TH/s';
+  try {
+    if (raw > 0) {
+      localStorage.setItem('bmc_total_hashrate',      convertHashrateToTH(raw, unit));
+      localStorage.setItem('bmc_total_hashrate_unit', unit);
+    } else {
+      localStorage.removeItem('bmc_total_hashrate');
+    }
+  } catch(e) {}
+}
+
+function loadRoiHashrate() {
+  try {
+    const thVal = parseFloat(localStorage.getItem('bmc_total_hashrate') || '');
+    const unit  = localStorage.getItem('bmc_total_hashrate_unit') || 'TH/s';
+    if (thVal > 0) {
+      const displayVal = convertHashrateFromTH(thVal, unit);
+      const inputEl = document.getElementById('roi-hashrate-input');
+      const unitEl  = document.getElementById('roi-hashrate-unit');
+      if (inputEl) inputEl.value = parseFloat(displayVal.toFixed(6));
+      if (unitEl)  unitEl.value  = unit;
+    }
+  } catch(e) {}
+}
+
+function onRoiHashrateChange() {
+  saveRoiHashrate();
+  // Auto-fill projection panel hashrate if empty
+  const roiInput = document.getElementById('roi-hashrate-input');
+  const roiUnit  = document.getElementById('roi-hashrate-unit');
+  const advInput = document.getElementById('hashrate-input');
+  const advUnit  = document.getElementById('hashrate-unit');
+  if (roiInput && advInput && (!advInput.value || parseFloat(advInput.value) <= 0)) {
+    advInput.value = roiInput.value;
+    if (advUnit && roiUnit) advUnit.value = roiUnit.value;
+    onHashrateChange();
+  }
+  // Heating uses total hashrate for proportion
+  if (typeof heatingInitialized !== 'undefined' && heatingInitialized) recalcHeating();
+}
+
+function onRoiHashrateUnitChange() {
+  const unitEl = document.getElementById('roi-hashrate-unit');
+  const inputEl = document.getElementById('roi-hashrate-input');
+  const placeholders = { 'TH/s': 'e.g. 335', 'PH/s': 'e.g. 0.335', 'EH/s': 'e.g. 0.000335' };
+  if (inputEl && unitEl) inputEl.placeholder = placeholders[unitEl.value] || 'e.g. 335';
+  saveRoiHashrate();
+  if (typeof heatingInitialized !== 'undefined' && heatingInitialized) recalcHeating();
+}
+
+/* ═════════════════════════════════════════════
+   FETCH DIFFICULTY DATA
+═════════════════════════════════════════════ */
+async function fetchDifficultyData() {
+  const res = await fetch('https://mempool.757btc.org/api/v1/difficulty-adjustment');
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.json();
+}
+
+/* ═════════════════════════════════════════════
+   ADVANCED PROJECTION UI
+═════════════════════════════════════════════ */
+function toggleAdvancedSection() {
+  advancedSectionOpen = !advancedSectionOpen;
+  const inner = document.getElementById('adv-inner');
+  const btn   = document.getElementById('adv-toggle-btn');
+  if (advancedSectionOpen) {
+    inner.style.display = 'flex';
+    btn.textContent = '▾ Advanced Projection (hashrate-adjusted)';
+  } else {
+    inner.style.display = 'none';
+    btn.textContent = '▸ Advanced Projection (hashrate-adjusted)';
+  }
+}
+
+function onHashrateUnitChange() {
+  const unit = document.getElementById('hashrate-unit').value;
+  const input = document.getElementById('hashrate-input');
+  const placeholders = { 'TH/s': 'e.g. 335', 'PH/s': 'e.g. 0.335', 'EH/s': 'e.g. 0.000335' };
+  input.placeholder = placeholders[unit] || 'e.g. 335';
+  onHashrateChange();
+}
+
+function onHashrateChange() {
+  clearTimeout(hashrateDebounce);
+  hashrateDebounce = setTimeout(async () => {
+    const raw = parseFloat(document.getElementById('hashrate-input').value);
+    const unit = document.getElementById('hashrate-unit').value;
+    const statusEl = document.getElementById('adv-status');
+    if (!raw || raw <= 0) {
+      lastHashrate = null;
+      advancedDiffData = null;
+      statusEl.textContent = '';
+      statusEl.className = 'adv-status';
+      renderAll();
+      return;
+    }
+    // Convert entered value to TH/s for all downstream math
+    let val = raw;
+    if (unit === 'PH/s') val = raw * 1000;
+    else if (unit === 'EH/s') val = raw * 1000000;
+    lastHashrate = val;
+    statusEl.textContent = 'Fetching difficulty data…';
+    statusEl.className = 'adv-status adv-loading';
+    try {
+      advancedDiffData = await fetchDifficultyData();
+      const pct = advancedDiffData.difficultyChange;
+      statusEl.textContent = `Next difficulty adj: ${pct >= 0 ? '+' : ''}${(pct ?? 0).toFixed(2)}% — earnings will ${pct > 0 ? 'decrease' : 'increase'} accordingly.`;
+      statusEl.className = 'adv-status adv-success';
+    } catch(e) {
+      advancedDiffData = null;
+      statusEl.textContent = '⚠ Could not fetch difficulty data. Showing simple projection only.';
+      statusEl.className = 'adv-status adv-error';
+    }
+    renderAll();
+  }, 600);
+}
+
+/* ═══════════════════════════════════════════════
+   ADD PAYOUT
+═══════════════════════════════════════════════ */
+async function addPayout() {
+  clearError('payout-error');
+  const date = document.getElementById('payout-date').value;
+  const amount = parseInt(document.getElementById('payout-amount').value, 10);
+  const notes = document.getElementById('payout-notes').value.trim();
+
+  if (!date) return showError('payout-error', 'Please select a date.');
+  if (!amount || amount <= 0) return showError('payout-error', 'Enter a valid sats amount.');
+
+  setLoading('payout-btn', 'payout-spinner', true);
+
+  let btcPrice = null;
+  try {
+    btcPrice = await fetchBtcPrice(date);
+  } catch(e) {
+    setLoading('payout-btn', 'payout-spinner', false);
+    try {
+      btcPrice = await askManualPrice(date);
+    } catch(ce) {
+      showToast('Entry cancelled.', 'error');
+      return;
+    }
+  }
+
+  setLoading('payout-btn', 'payout-spinner', false);
+
+  entries.push({
+    id: uid(),
+    date,
+    type: 'payout',
+    notes,
+    usd_amount: null,
+    btc_price: btcPrice,
+    sats_value: amount
+  });
+
+  save();
+  renderAll();
+  document.getElementById('payout-amount').value = '';
+  document.getElementById('payout-notes').value = '';
+  showToast('Payout added ⚡', 'success');
+}
+
+/* ═══════════════════════════════════════════════
+   ADD ELECTRICITY
+═══════════════════════════════════════════════ */
+async function addElectricity() {
+  clearError('elec-error');
+  const date = document.getElementById('elec-date').value;
+  const usd = parseFloat(document.getElementById('elec-amount').value);
+  const notes = document.getElementById('elec-notes').value.trim();
+
+  if (!date) return showError('elec-error', 'Please select a date.');
+  if (!usd || usd <= 0) return showError('elec-error', 'Enter a valid USD amount.');
+
+  setLoading('elec-btn', 'elec-spinner', true);
+
+  let btcPrice;
+  try {
+    btcPrice = await fetchBtcPrice(date);
+  } catch(e) {
+    setLoading('elec-btn', 'elec-spinner', false);
+    try {
+      btcPrice = await askManualPrice(date);
+    } catch(ce) {
+      showToast('Entry cancelled.', 'error');
+      return;
+    }
+  }
+
+  setLoading('elec-btn', 'elec-spinner', false);
+
+  const sats = -usdToSats(usd, btcPrice);
+
+  entries.push({
+    id: uid(),
+    date,
+    type: 'electricity',
+    notes,
+    usd_amount: usd,
+    btc_price: btcPrice,
+    sats_value: sats
+  });
+
+  save();
+  renderAll();
+  document.getElementById('elec-amount').value = '';
+  document.getElementById('elec-notes').value = '';
+  showToast('Electricity cost added.', 'info');
+}
+
+/* ═══════════════════════════════════════════════
+   ADD HARDWARE
+═══════════════════════════════════════════════ */
+async function addHardware() {
+  clearError('hw-error');
+  const date = document.getElementById('hw-date').value;
+  const currency = document.getElementById('hw-currency').value;
+  const amount = parseFloat(document.getElementById('hw-amount').value);
+  const notes = document.getElementById('hw-notes').value.trim();
+
+  if (!date) return showError('hw-error', 'Please select a date.');
+  if (!amount || amount <= 0) return showError('hw-error', 'Enter a valid amount.');
+  if (currency === 'sats' && !Number.isInteger(amount)) return showError('hw-error', 'Sats must be a whole number.');
+
+  let sats, btcPrice = null, usdAmount = null;
+
+  if (currency === 'sats') {
+    sats = -Math.round(amount);
+    usdAmount = null;
+    btcPrice = null;
+  } else {
+    usdAmount = amount;
+    setLoading('hw-btn', 'hw-spinner', true);
+    try {
+      btcPrice = await fetchBtcPrice(date);
+    } catch(e) {
+      setLoading('hw-btn', 'hw-spinner', false);
+      try {
+        btcPrice = await askManualPrice(date);
+      } catch(ce) {
+        showToast('Entry cancelled.', 'error');
+        return;
+      }
+    }
+    setLoading('hw-btn', 'hw-spinner', false);
+    sats = -usdToSats(usdAmount, btcPrice);
+  }
+
+  entries.push({
+    id: uid(),
+    date,
+    type: 'hardware',
+    notes,
+    usd_amount: usdAmount,
+    btc_price: btcPrice,
+    sats_value: sats
+  });
+
+  save();
+  renderAll();
+  document.getElementById('hw-amount').value = '';
+  document.getElementById('hw-notes').value = '';
+  showToast('Hardware purchase added.', 'info');
+}
+
+/* ═══════════════════════════════════════════════
+   POOL SYNC — OCEAN
+
+   NOTE: OCEAN pool does not expose a public JSON API for payouts.
+   https://ocean.xyz/api/v1/address/{address}/payouts returns 404 — no
+   such endpoint exists as of April 2026. We use the mempool.space API
+   instead, which returns all on-chain transactions for a Bitcoin address
+   with open CORS (Access-Control-Allow-Origin: *). For a dedicated mining
+   payout address, incoming transactions = pool payouts.
+
+   If OCEAN releases a public payouts API in the future, replace the
+   fetchMempoolTxs() call with a fetch to their endpoint and adapt the
+   response parsing below.
+═══════════════════════════════════════════════ */
+
+function togglePoolSync() {
+  document.getElementById('pool-sync').classList.toggle('open');
+}
+
+function initPoolSync() {
+  const addr = localStorage.getItem('bmc_ocean_address') || '';
+  document.getElementById('ocean-address').value = addr;
+
+  const today = new Date();
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+  document.getElementById('sync-to').value   = today.toISOString().slice(0, 10);
+  document.getElementById('sync-from').value = oneYearAgo.toISOString().slice(0, 10);
+}
+
+function setSyncStatus(msg, type) {
+  const el = document.getElementById('sync-status');
+  el.textContent = msg;
+  el.className = 'pool-sync-status' + (type ? ' ' + type : '');
+}
+
+// Fetch all incoming transactions for `address` within [fromTs, toTs] (Unix seconds).
+// Uses mempool.space paginated API. Stops paginating when txs go older than fromTs.
+async function fetchMempoolTxs(address, fromTs, toTs) {
+  const allTxs = [];
+  let url = `https://mempool.space/api/address/${encodeURIComponent(address)}/txs`;
+
+  for (let page = 0; page < 20; page++) { // cap at 20 pages (1000 txs) to be safe
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (e) {
+      // Network / CORS error
+      throw new TypeError('fetch-failed: ' + e.message);
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+
+    let hitOldest = false;
+    for (const tx of batch) {
+      const blockTime = tx.status && tx.status.block_time;
+      if (!blockTime) continue; // skip unconfirmed
+      if (blockTime > toTs) continue; // newer than range
+      if (blockTime < fromTs) { hitOldest = true; break; } // older than range — stop
+
+      // Sum ALL outputs where THIS address receives sats (a tx can have multiple)
+      const myVouts = (tx.vout || []).filter(v => v.scriptpubkey_address === address);
+      const totalSats = myVouts.reduce((sum, v) => sum + (v.value || 0), 0);
+      if (totalSats <= 0) continue;
+
+      allTxs.push({
+        txid:      tx.txid,
+        blockTime: blockTime,
+        sats:      totalSats
+      });
+    }
+
+    if (hitOldest || batch.length < 25) break;
+
+    // Paginate: next page starts after the last txid in this batch
+    const lastTxid = batch[batch.length - 1].txid;
+    url = `https://mempool.space/api/address/${encodeURIComponent(address)}/txs/chain/${lastTxid}`;
+  }
+
+  return allTxs;
+}
+
+async function syncOceanPayouts() {
+  const address = document.getElementById('ocean-address').value.trim();
+  const fromStr = document.getElementById('sync-from').value;
+  const toStr   = document.getElementById('sync-to').value;
+
+  // Persist address
+  if (address) localStorage.setItem('bmc_ocean_address', address);
+
+  // Validate address format (basic: starts with bc1/1/3, length 26-62)
+  if (!address || !/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,61}$/.test(address)) {
+    setSyncStatus('Invalid Bitcoin address. Must start with bc1, 1, or 3 (length 26–62 chars).', 'error');
+    return;
+  }
+  if (!fromStr || !toStr) {
+    setSyncStatus('Please select a date range.', 'error');
+    return;
+  }
+  if (fromStr > toStr) {
+    setSyncStatus('“From” date must be before “To” date.', 'error');
+    return;
+  }
+
+  // Convert date strings to Unix timestamps (inclusive of full days UTC)
+  const fromTs = Math.floor(new Date(fromStr + 'T00:00:00Z').getTime() / 1000);
+  const toTs   = Math.floor(new Date(toStr   + 'T23:59:59Z').getTime() / 1000);
+
+  setLoading('sync-btn', 'sync-spinner', true);
+  setSyncStatus('Fetching transactions from mempool.space…');
+
+  let rawTxs;
+  try {
+    rawTxs = await fetchMempoolTxs(address, fromTs, toTs);
+  } catch (e) {
+    setLoading('sync-btn', 'sync-spinner', false);
+    if (String(e).includes('fetch-failed') || e instanceof TypeError) {
+      setSyncStatus('Could not reach mempool.space. Check your connection and try again.', 'error');
+    } else {
+      setSyncStatus('API error: ' + e.message, 'error');
+    }
+    return;
+  }
+
+  if (rawTxs.length === 0) {
+    setLoading('sync-btn', 'sync-spinner', false);
+    setSyncStatus('No payouts found for this address in the selected date range.', '');
+    return;
+  }
+
+  // Deduplicate against existing entries (match on date + sats_value)
+  const existingKeys = new Set(entries.map(e => `${e.date}|${e.sats_value}`));
+  const toImport = [];
+  let skipped = 0;
+
+  for (const tx of rawTxs) {
+    const date = new Date(tx.blockTime * 1000).toISOString().slice(0, 10);
+    const key  = `${date}|${tx.sats}`;
+    if (existingKeys.has(key)) { skipped++; continue; }
+    existingKeys.add(key);
+    toImport.push({ date, sats: tx.sats, txid: tx.txid });
+  }
+
+  if (toImport.length === 0) {
+    setLoading('sync-btn', 'sync-spinner', false);
+    setSyncStatus(`No new payouts to import (${skipped} already present).`, '');
+    return;
+  }
+
+  // Fetch historical BTC prices sequentially (300 ms gap to respect CoinGecko rate limits)
+  let imported = 0;
+  let priceErrors = 0;
+
+  for (let i = 0; i < toImport.length; i++) {
+    const item = toImport[i];
+    setSyncStatus(`Fetching BTC price ${i + 1}/${toImport.length} (${item.date})…`);
+    if (i > 0) await new Promise(r => setTimeout(r, 300));
+
+    let btcPrice = null;
+    try {
+      btcPrice = await fetchBtcPrice(item.date);
+    } catch (e) {
+      priceErrors++;
+      // Leave btcPrice null — entry will show — for BTC price (editable manually)
+    }
+
+    const shortTxid = item.txid.slice(0, 8) + '…' + item.txid.slice(-8);
+    entries.push({
+      id:         uid(),
+      date:       item.date,
+      type:       'payout',
+      notes:      `OCEAN payout · txid: ${shortTxid}`,
+      usd_amount: null,
+      btc_price:  btcPrice,
+      sats_value: item.sats
+    });
+    imported++;
+  }
+
+  save();
+  renderAll();
+  setLoading('sync-btn', 'sync-spinner', false);
+
+  let msg = `Imported ${imported} new payout${imported !== 1 ? 's' : ''}`;
+  if (skipped > 0)      msg += ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped)`;
+  if (priceErrors > 0)  msg += `. ${priceErrors} BTC price${priceErrors !== 1 ? 's' : ''} unavailable — edit manually.`;
+  setSyncStatus(msg, 'success');
+  showToast(msg, 'success');
+}
+
+/* ═══════════════════════════════════════════════
+   DELETE ENTRY
+═══════════════════════════════════════════════ */
+function deleteEntry(id) {
+  if (!confirm('Delete this entry? This cannot be undone.')) return;
+  entries = entries.filter(e => e.id !== id);
+  save();
+  renderAll();
+  showToast('Entry removed.', 'info');
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER SUMMARY
+═══════════════════════════════════════════════ */
+function renderSummary() {
+  const sorted = sortedEntries();
+  const totalEarned = sorted.filter(e => e.type === 'payout').reduce((s, e) => s + e.sats_value, 0);
+  const totalSpentRaw = sorted.filter(e => e.type !== 'payout').reduce((s, e) => s + Math.abs(e.sats_value), 0);
+  // Apply heating offset when toggle is active
+  const heatingAdj = (heatingOffsetInRoi && window.currentHeatingOffsetSats > 0) ? window.currentHeatingOffsetSats : 0;
+  const totalSpent = Math.max(0, totalSpentRaw - heatingAdj);
+  const net = totalEarned - totalSpent;
+
+  document.getElementById('summary-earned').textContent = totalEarned.toLocaleString();
+  document.getElementById('summary-spent').textContent = totalSpent.toLocaleString();
+
+  const netEl = document.getElementById('summary-net');
+  netEl.textContent = net.toLocaleString();
+  netEl.className = 'value ' + (net >= 0 ? 'positive' : 'negative');
+
+  // Break-even: first date where running balance >= 0 (after having gone negative)
+  // When heating offset is active, simulate adjusted balances for break-even detection
+  let breakEven = '—';
+  let running = 0;
+  let wentNegative = false;
+  for (const e of sorted) {
+    running += e.sats_value;
+    // Apply heating offset as a constant upward shift to the running balance
+    const adjRunning = running + heatingAdj;
+    if (adjRunning < 0) wentNegative = true;
+    if (wentNegative && adjRunning >= 0) {
+      breakEven = formatDate(e.date);
+      break;
+    }
+  }
+  if (breakEven === '—' && wentNegative) breakEven = 'Not yet';
+  // Update break-even caption below Chart 1
+  const captionEl = document.getElementById('breakeven-caption');
+  if (captionEl) {
+    if (breakEven !== '—' && breakEven !== 'Not yet') {
+      captionEl.textContent = '⚡ Break-even achieved: ' + breakEven;
+      captionEl.className = 'breakeven-caption';
+    } else if (wentNegative) {
+      captionEl.textContent = 'Break-even not yet reached';
+      captionEl.className = 'breakeven-caption not-yet';
+    } else {
+      captionEl.textContent = '';
+      captionEl.className = 'breakeven-caption';
+    }
+  }
+
+  // ROI
+  const roiEl = document.getElementById('summary-roi');
+  if (totalSpent === 0) {
+    roiEl.textContent = '—';
+    roiEl.className = 'value';
+  } else {
+    const roi = (net / totalSpent * 100);
+    roiEl.textContent = roi.toFixed(1) + '%';
+    roiEl.className = 'value ' + (roi >= 0 ? 'positive' : 'negative');
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   CHART 1: HISTORICAL BALANCE
+═══════════════════════════════════════════════ */
+function renderHistChart() {
+  const sorted = sortedEntries();
+  const rawBalances = computeRunningBalances(sorted);
+  // Shift balance curve up by heating offset when toggle is active
+  const heatingAdj = (heatingOffsetInRoi && window.currentHeatingOffsetSats > 0) ? window.currentHeatingOffsetSats : 0;
+  const balances = heatingAdj > 0 ? rawBalances.map(b => b + heatingAdj) : rawBalances;
+
+  const labels = sorted.map(e => formatDate(e.date));
+
+  const datasets = [];
+
+  // Historical balance (solid amber)
+  datasets.push({
+    label: 'Historical Balance',
+    data: balances,
+    borderColor: '#d4830a',
+    backgroundColor: 'rgba(212,131,10,.07)',
+    fill: true,
+    tension: 0.3,
+    pointRadius: sorted.length > 50 ? 0 : 4,
+    pointHoverRadius: 6,
+    pointBackgroundColor: balances.map(b => b >= 0 ? '#4caf72' : '#e05555'),
+    pointBorderColor: 'transparent',
+    borderWidth: 2,
+    spanGaps: false,
+    order: 1,
+  });
+
+  // Zero / break-even horizontal line (hidden from legend)
+  datasets.push({
+    label: '_zero',
+    data: sorted.map(() => 0),
+    borderColor: 'rgba(212,131,10,.3)',
+    borderDash: [5, 5],
+    borderWidth: 1,
+    pointRadius: 0,
+    fill: false,
+    spanGaps: true,
+    order: 10,
+  });
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: sorted.length > 0,
+        labels: {
+          color: '#9c8b74',
+          font: { size: 11 },
+          boxWidth: 28,
+          boxHeight: 2,
+          padding: 14,
+          filter: item => !item.text.startsWith('_'),
+        }
+      },
+      tooltip: {
+        backgroundColor: '#261c10',
+        borderColor: 'rgba(212,131,10,.3)',
+        borderWidth: 1,
+        titleColor: '#e8dcc8',
+        bodyColor: '#d4830a',
+        filter: item => item.parsed.y !== null && !item.dataset.label.startsWith('_'),
+        callbacks: {
+          label: ctx => {
+            if (ctx.parsed.y === null) return null;
+            return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' sats';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#9c8b74', font: { size: 11 }, maxTicksLimit: 10 },
+        grid: { color: 'rgba(212,131,10,.06)' },
+      },
+      y: {
+        ticks: { color: '#9c8b74', font: { size: 11 }, callback: v => v.toLocaleString() },
+        grid: { color: 'rgba(212,131,10,.06)' },
+      }
+    },
+    animation: { duration: 300 }
+  };
+
+  const ctx = document.getElementById('roi-chart').getContext('2d');
+  const chartData = { labels, datasets };
+
+  if (roiChart) {
+    roiChart.data = chartData;
+    roiChart.options = options;
+    roiChart.update();
+  } else {
+    roiChart = new Chart(ctx, { type: 'line', data: chartData, options });
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   CHART 2: BREAK-EVEN PROJECTION
+═══════════════════════════════════════════════ */
+function renderProjChart() {
+  const payouts = getPayoutEntries();
+  const sorted  = sortedEntries();
+  const rawBalances = computeRunningBalances(sorted);
+  // Apply heating offset to current balance when toggle is active
+  const heatingAdj = (heatingOffsetInRoi && window.currentHeatingOffsetSats > 0) ? window.currentHeatingOffsetSats : 0;
+  const currentBalance = (rawBalances.length > 0 ? rawBalances[rawBalances.length - 1] : 0) + heatingAdj;
+  const today = new Date().toISOString().slice(0, 10);
+  const projContainer = document.getElementById('proj-chart-wrap');
+
+  function hideProjChart() {
+    if (projChart) { projChart.destroy(); projChart = null; }
+    if (projContainer) projContainer.style.display = 'none';
+  }
+
+  if (payouts.length < 3) { hideProjChart(); return; }
+
+  const avgRate = computeAvgSatsPerDay(payouts);
+  if (avgRate <= 0 || currentBalance >= 0) { hideProjChart(); return; }
+
+  if (projContainer) projContainer.style.display = 'block';
+
+  const simpleProj = computeProjectionPoints(today, currentBalance, avgRate);
+  let advProj = null;
+  if (lastHashrate && advancedDiffData) {
+    const advRate = computeAdvancedRate(avgRate, advancedDiffData.difficultyChange || 0);
+    if (advRate > 0) advProj = computeProjectionPoints(today, currentBalance, advRate);
+  }
+
+  // Build date set: today + all projection endpoints
+  const dateSet = new Set([today]);
+  if (simpleProj && simpleProj.points) simpleProj.points.forEach(p => dateSet.add(p.date));
+  if (advProj && advProj.points) advProj.points.forEach(p => dateSet.add(p.date));
+
+  const sortedDates   = [...dateSet].sort();
+  const displayLabels = sortedDates.map(d => formatDate(d));
+
+  function buildProjData(proj) {
+    if (!proj || proj.alreadyBreakEven || !proj.points || proj.points.length === 0)
+      return sortedDates.map(() => null);
+    const m = new Map(proj.points.map(p => [p.date, p.balance]));
+    return sortedDates.map(d => m.has(d) ? m.get(d) : null);
+  }
+
+  const simpleProjData = buildProjData(simpleProj);
+  const advProjData    = advProj ? buildProjData(advProj) : null;
+
+  const datasets = [];
+
+  // Zero line (hidden from legend)
+  datasets.push({
+    label: '_zero',
+    data: sortedDates.map(() => 0),
+    borderColor: 'rgba(212,131,10,.3)',
+    borderDash: [5, 5],
+    borderWidth: 1,
+    pointRadius: 0,
+    fill: false,
+    spanGaps: true,
+    order: 10,
+  });
+
+  // Simple projection (dashed amber)
+  if (simpleProjData.some(v => v !== null)) {
+    const beDate = simpleProj && simpleProj.breakEvenDate;
+    datasets.push({
+      label: 'Projected (avg rate)',
+      data: simpleProjData,
+      borderColor: '#d4830a',
+      backgroundColor: 'transparent',
+      borderDash: [7, 4],
+      borderWidth: 2,
+      pointRadius: simpleProjData.map((v, i) => {
+        if (v === null) return 0;
+        if (beDate && sortedDates[i] === beDate) return 7;
+        if (sortedDates[i] === today) return 3;
+        return 0;
+      }),
+      pointHoverRadius: 7,
+      pointBackgroundColor: simpleProjData.map((v, i) =>
+        (beDate && sortedDates[i] === beDate) ? '#4caf72' : '#d4830a'
+      ),
+      pointBorderColor: 'transparent',
+      fill: false,
+      spanGaps: true,
+      order: 2,
+    });
+  }
+
+  // Advanced projection (dashed lighter amber — only when hashrate entered)
+  if (advProjData && advProjData.some(v => v !== null)) {
+    const advColor = 'rgba(212,131,10,0.5)';
+    const beDate   = advProj && advProj.breakEvenDate;
+    datasets.push({
+      label: 'Projected (hashrate-adjusted)',
+      data: advProjData,
+      borderColor: advColor,
+      backgroundColor: 'transparent',
+      borderDash: [7, 4],
+      borderWidth: 2,
+      pointRadius: advProjData.map((v, i) => {
+        if (v === null) return 0;
+        if (beDate && sortedDates[i] === beDate) return 7;
+        if (sortedDates[i] === today) return 3;
+        return 0;
+      }),
+      pointHoverRadius: 7,
+      pointBackgroundColor: advProjData.map((v, i) =>
+        (beDate && sortedDates[i] === beDate) ? '#4caf72' : advColor
+      ),
+      pointBorderColor: 'transparent',
+      fill: false,
+      spanGaps: true,
+      order: 3,
+    });
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        labels: {
+          color: '#9c8b74',
+          font: { size: 11 },
+          boxWidth: 28,
+          boxHeight: 2,
+          padding: 14,
+          filter: item => !item.text.startsWith('_'),
+        }
+      },
+      tooltip: {
+        backgroundColor: '#261c10',
+        borderColor: 'rgba(212,131,10,.3)',
+        borderWidth: 1,
+        titleColor: '#e8dcc8',
+        bodyColor: '#d4830a',
+        filter: item => item.parsed.y !== null && !item.dataset.label.startsWith('_'),
+        callbacks: {
+          label: ctx => {
+            if (ctx.parsed.y === null) return null;
+            return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' sats';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#9c8b74', font: { size: 11 }, maxTicksLimit: 10 },
+        grid: { color: 'rgba(212,131,10,.06)' },
+      },
+      y: {
+        ticks: { color: '#9c8b74', font: { size: 11 }, callback: v => v.toLocaleString() },
+        grid: { color: 'rgba(212,131,10,.06)' },
+      }
+    },
+    animation: { duration: 300 }
+  };
+
+  // Always destroy and recreate to avoid canvas reuse errors
+  if (projChart) { projChart.destroy(); projChart = null; }
+  const ctx = document.getElementById('projChart').getContext('2d');
+  projChart = new Chart(ctx, { type: 'line', data: { labels: displayLabels, datasets }, options });
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER TABLE
+═══════════════════════════════════════════════ */
+function renderTable() {
+  const sorted = sortedEntries();
+  const balances = computeRunningBalances(sorted);
+  const tbody = document.getElementById('entries-tbody');
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><span class="icon">⛏</span>No entries yet. Add your first payout or cost above.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((e, i) => {
+    const balance = balances[i];
+    const typeLabel = e.type === 'payout' ? 'Payout' : e.type === 'electricity' ? 'Electricity' : 'Hardware';
+    const badgeClass = `badge-${e.type}`;
+    const rowClass = `row-${e.type}`;
+    const satsClass = e.sats_value >= 0 ? 'sats-positive' : 'sats-negative';
+    const balClass = balance >= 0 ? 'balance-positive' : 'balance-negative';
+    const satsDisplay = (e.sats_value >= 0 ? '+' : '') + e.sats_value.toLocaleString();
+    const balDisplay = (balance >= 0 ? '+' : '') + balance.toLocaleString();
+
+    return `<tr class="${rowClass}">
+      <td>${formatDate(e.date)}</td>
+      <td><span class="type-badge ${badgeClass}">${typeLabel}</span></td>
+      <td class="notes-cell">${escHtml(e.notes || '—')}</td>
+      <td>${e.type === 'payout' && e.btc_price != null ? '≈ ' + fmtUsd((e.sats_value / 1e8) * e.btc_price) : (e.usd_amount != null ? fmtUsd(e.usd_amount) : '—')}</td>
+      <td>${e.btc_price != null ? fmtBtcPrice(e.btc_price) : '—'}</td>
+      <td class="${satsClass}">${satsDisplay}</td>
+      <td class="${balClass}">${balDisplay}</td>
+      <td><button class="btn-delete" onclick="deleteEntry('${e.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ═════════════════════════════════════════════
+   RENDER PROJECTION
+═════════════════════════════════════════════ */
+function renderProjection() {
+  const payouts = getPayoutEntries();
+  const sorted  = sortedEntries();
+  const rawBalances = computeRunningBalances(sorted);
+  // Apply heating offset to current balance when toggle is active
+  const heatingAdj = (heatingOffsetInRoi && window.currentHeatingOffsetSats > 0) ? window.currentHeatingOffsetSats : 0;
+  const currentBalance = (rawBalances.length > 0 ? rawBalances[rawBalances.length - 1] : 0) + heatingAdj;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const gateEl           = document.getElementById('proj-gate');
+  const advSection       = document.getElementById('adv-section');
+  const projBEEl         = document.getElementById('proj-breakeven-val');
+  const projBESubEl      = document.getElementById('proj-breakeven-sub');
+  const projRateEl       = document.getElementById('proj-rate-val');
+  const projAdvCard      = document.getElementById('proj-adv-card');
+  const projAdvEl        = document.getElementById('proj-adv-val');
+  const projAdvSubEl     = document.getElementById('proj-adv-sub');
+  const achievedEl       = document.getElementById('proj-achieved');
+  const achievedDateEl   = document.getElementById('proj-achieved-date');
+  const achievedBalEl    = document.getElementById('proj-achieved-balance');
+  const projChartWrapEl  = document.getElementById('proj-chart-wrap');
+
+  // ── Already profitable: show achievement card ──
+  if (currentBalance >= 0 && rawBalances.length > 0) {
+    // Find the exact date the balance crossed into positive territory
+    let beDate = null;
+    let running = 0, wentNegative = false;
+    for (const e of sorted) {
+      running += e.sats_value;
+      const adjRunning = running + heatingAdj;
+      if (adjRunning < 0) wentNegative = true;
+      if (wentNegative && adjRunning >= 0) { beDate = e.date; break; }
+    }
+
+    // Hide chart, gate, and advanced section
+    gateEl.style.display         = 'none';
+    advSection.style.display     = 'none';
+    projChartWrapEl.style.display = 'none';
+    projAdvCard.style.display    = 'none';
+
+    // Show achievement card
+    achievedEl.style.display = 'block';
+    if (wentNegative && beDate) {
+      achievedDateEl.textContent = formatDate(beDate);
+    } else {
+      achievedDateEl.textContent = 'Always profitable ✓';
+    }
+    achievedBalEl.textContent = '+' + currentBalance.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' sats';
+
+    // Keep summary cards accurate
+    const avgRate = computeAvgSatsPerDay(payouts);
+    projRateEl.textContent  = avgRate > 0 ? Math.round(avgRate).toLocaleString() : '—';
+    projBEEl.textContent    = wentNegative && beDate ? formatDate(beDate) : 'N/A';
+    projBEEl.className      = 'value positive';
+    projBEEl.style.color    = '';
+    projBESubEl.textContent = wentNegative ? '🎉 Break-even achieved!' : 'always profitable ✓';
+    return;
+  }
+
+  // ── Not yet profitable ──
+  achievedEl.style.display = 'none';
+
+  if (payouts.length < 3) {
+    gateEl.style.display      = 'block';
+    advSection.style.display  = 'none';
+    projBEEl.textContent      = '—';
+    projBEEl.className        = 'value';
+    projBEEl.style.color      = '';
+    projBESubEl.textContent   = 'need 3+ payouts';
+    projRateEl.textContent    = '—';
+    projAdvCard.style.display = 'none';
+    return;
+  }
+
+  gateEl.style.display     = 'none';
+  advSection.style.display = 'flex';
+
+  const avgRate = computeAvgSatsPerDay(payouts);
+
+  // Avg rate card
+  projRateEl.textContent = avgRate > 0 ? Math.round(avgRate).toLocaleString() : '—';
+
+  if (avgRate <= 0) {
+    projBEEl.textContent      = '—';
+    projBEEl.className        = 'value';
+    projBEEl.style.color      = '';
+    projBESubEl.textContent   = 'no positive earning rate';
+    projAdvCard.style.display = 'none';
+    return;
+  }
+
+  // Simple projection
+  const simpleProj = computeProjectionPoints(today, currentBalance, avgRate);
+
+  if (!simpleProj || simpleProj.alreadyBreakEven) {
+    projBEEl.textContent    = '—';
+    projBEEl.style.color    = '';
+    projBESubEl.textContent = 'projection unavailable';
+  } else if (simpleProj.breakEvenDate) {
+    const daysAway = Math.ceil(daysBetween(today, simpleProj.breakEvenDate));
+    projBEEl.textContent    = formatDate(simpleProj.breakEvenDate);
+    projBEEl.className      = 'value';
+    projBEEl.style.color    = '';
+    projBESubEl.textContent = `~${daysAway} day${daysAway === 1 ? '' : 's'} from now`;
+  } else {
+    projBEEl.textContent    = '>365 days';
+    projBEEl.className      = 'value negative';
+    projBEEl.style.color    = '';
+    projBESubEl.textContent = 'beyond 1-year horizon';
+  }
+
+  // Advanced projection card
+  if (lastHashrate && advancedDiffData) {
+    const advRate = computeAdvancedRate(avgRate, advancedDiffData.difficultyChange || 0);
+    const advProj = advRate > 0 ? computeProjectionPoints(today, currentBalance, advRate) : null;
+    projAdvCard.style.display = 'block';
+    if (advProj && advProj.breakEvenDate) {
+      const daysAway = Math.ceil(daysBetween(today, advProj.breakEvenDate));
+      projAdvEl.textContent    = formatDate(advProj.breakEvenDate);
+      projAdvSubEl.textContent = `~${daysAway} day${daysAway === 1 ? '' : 's'} from now`;
+    } else if (advProj && advProj.endOfRange) {
+      projAdvEl.textContent    = '>365 days';
+      projAdvSubEl.textContent = 'beyond 1-year horizon';
+    } else {
+      projAdvEl.textContent    = '—';
+      projAdvSubEl.textContent = 'hashrate-adjusted';
+    }
+  } else {
+    projAdvCard.style.display = 'none';
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER ALL
+═══════════════════════════════════════════════ */
+function renderAll() {
+  renderSummary();
+  renderHistChart();
+  renderProjChart();
+  renderTable();
+  renderProjection();
+  if (typeof heatingInitialized !== 'undefined' && heatingInitialized) recalcHeating();
+}
+
+/* ═══════════════════════════════════════════════
+   CSV EXPORT
+═══════════════════════════════════════════════ */
+function exportCSV() {
+  if (entries.length === 0) { showToast('No entries to export.', 'error'); return; }
+  const sorted = sortedEntries();
+  const header = 'date,type,notes,usd_amount,btc_price_at_date,sats_value\n';
+  const rows = sorted.map(e =>
+    [e.date, e.type, '"' + (e.notes||'').replace(/"/g,'""') + '"',
+     e.usd_amount != null ? e.usd_amount : '',
+     e.btc_price != null ? e.btc_price : '',
+     e.sats_value
+    ].join(',')
+  ).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `bmc-mining-roi-${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported ✓', 'success');
+}
+
+/* ═══════════════════════════════════════════════
+   CSV IMPORT
+═══════════════════════════════════════════════ */
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) { showToast('CSV appears empty.', 'error'); return; }
+    const header = lines[0].toLowerCase();
+    if (!header.includes('date') || !header.includes('type')) {
+      showToast('Unrecognized CSV format.', 'error');
+      return;
+    }
+    let imported = 0, skipped = 0;
+    const existingKeys = new Set(entries.map(e => `${e.date}|${e.type}|${e.sats_value}`));
+
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCSVRow(lines[i]);
+      if (!row || row.length < 6) continue;
+      const [date, type, notes, usd_amount, btc_price, sats_value] = row;
+      if (!date || !type || !sats_value) continue;
+      const sats = parseInt(sats_value, 10);
+      if (isNaN(sats)) continue;
+      const key = `${date}|${type}|${sats}`;
+      if (existingKeys.has(key)) { skipped++; continue; }
+      existingKeys.add(key);
+      entries.push({
+        id: uid(),
+        date: date.trim(),
+        type: type.trim(),
+        notes: notes.replace(/^"|"$/g,'').replace(/""/g,'"').trim(),
+        usd_amount: usd_amount ? parseFloat(usd_amount) : null,
+        btc_price: btc_price ? parseFloat(btc_price) : null,
+        sats_value: sats
+      });
+      imported++;
+    }
+    save();
+    renderAll();
+    showToast(`Imported ${imported} rows${skipped ? ', ' + skipped + ' dupes skipped' : ''}.`, 'success');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function parseCSVRow(line) {
+  const result = [];
+  let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (c === ',' && !inQuote) {
+      result.push(cur); cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+/* ═══════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════ */
+(function() {
+  const toggle = document.getElementById('nav-toggle');
+  const links = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  toggle.addEventListener('click', function() { links.classList.toggle('open'); });
+  links.addEventListener('click', function(e) {
+    if (e.target.tagName === 'A') links.classList.remove('open');
+  });
+})();
+
+/* ═══════════════════════════════════════════════
+   EMBERS
+═══════════════════════════════════════════════ */
+(function() {
+  var colors = ['#d4830a','#e69520','#f7931a','#c26a08'];
+  var container = document.createElement('div');
+  container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden';
+  document.body.appendChild(container);
+  for (var i = 0; i < 20; i++) {
+    var em = document.createElement('div');
+    em.className = 'ember';
+    var size = (Math.random() * 3 + 1).toFixed(1);
+    em.style.cssText = [
+      'width:' + size + 'px',
+      'height:' + size + 'px',
+      'left:' + (Math.random() * 100).toFixed(1) + '%',
+      'bottom:' + (Math.random() * 60).toFixed(1) + '%',
+      'background:' + colors[i % colors.length],
+      'box-shadow:0 0 ' + (size * 3) + 'px ' + colors[i % colors.length],
+      'animation-duration:' + (Math.random() * 10 + 8).toFixed(1) + 's',
+      'animation-delay:' + (Math.random() * 12).toFixed(1) + 's'
+    ].join(';');
+    container.appendChild(em);
+  }
+})();
+
+/* ═════════════════════════════════════════════
+   TAB SWITCHING
+═════════════════════════════════════════════ */
+(function() {
+  const btns   = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+  btns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const target = this.dataset.tab;
+      btns.forEach(function(b) { b.classList.remove('active'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      this.classList.add('active');
+      const panel = document.getElementById(target);
+      if (panel) panel.classList.add('active');
+      // Chart.js canvases in hidden divs have zero size;
+      // resize them when the ROI tab becomes visible again.
+      if (target === 'tab-roi') {
+        setTimeout(function() {
+          if (roiChart)  roiChart.resize();
+          if (projChart) projChart.resize();
+        }, 20);
+      }
+    });
+  });
+})();
+
+/* ═══════════════════════════════════════════════
+   NETWORK STATS (LIVE)
+═══════════════════════════════════════════════ */
+// Try primaryUrl first; on any error fall back to fallbackUrl (mempool.space mirror).
+async function netFetchWithRetry(primaryUrl, fallbackUrl) {
+  const attempt = async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  };
+  try {
+    return await attempt(primaryUrl);
+  } catch(e) {
+    // Primary failed — try the fallback source
+    return await attempt(fallbackUrl);
+  }
+}
+
+function setNetVal(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+async function fetchNetworkStats() {
+  const PRIMARY = 'https://mempool.757btc.org';
+  const FALLBACK = 'https://mempool.space';
+  const [hashrateResult, diffResult, priceResult] = await Promise.allSettled([
+    netFetchWithRetry(`${PRIMARY}/api/v1/mining/hashrate/3d`,      `${FALLBACK}/api/v1/mining/hashrate/3d`),
+    netFetchWithRetry(`${PRIMARY}/api/v1/difficulty-adjustment`,   `${FALLBACK}/api/v1/difficulty-adjustment`),
+    netFetchWithRetry(`${PRIMARY}/api/v1/prices`,                  `${FALLBACK}/api/v1/prices`),
+  ]);
+
+  // Card 1: Network Hashrate
+  if (hashrateResult.status === 'fulfilled' && hashrateResult.value.currentHashrate != null) {
+    const ehVal = (hashrateResult.value.currentHashrate / 1e18).toFixed(2);
+    setNetVal('net-hashrate-val', ehVal + ' EH/s');
+  } else {
+    setNetVal('net-hashrate-val', '—');
+  }
+
+  // Card 2: Next Difficulty
+  if (diffResult.status === 'fulfilled') {
+    const d = diffResult.value;
+    const pct = d.difficultyChange;
+    if (pct != null) {
+      const sign = pct >= 0 ? '+' : '';
+      const cls  = pct >= 0 ? 'diff-up' : 'diff-down';
+      setNetVal('net-difficulty-val', `<span class="${cls}">${sign}${pct.toFixed(2)}%</span>`);
+      if (d.remainingTime != null) {
+        const days = Math.round(d.remainingTime / (1000 * 60 * 60 * 24));
+        setNetVal('net-difficulty-sub', `in ~${days} day${days === 1 ? '' : 's'}`);
+      } else {
+        setNetVal('net-difficulty-sub', 'next retarget');
+      }
+    } else {
+      setNetVal('net-difficulty-val', '—');
+      setNetVal('net-difficulty-sub', '—');
+    }
+  } else {
+    setNetVal('net-difficulty-val', '—');
+    setNetVal('net-difficulty-sub', '—');
+  }
+
+  // Card 3: Hash Price
+  // Formula: $/PH/day = (3.125 BTC × 144 blocks/day × BTC price USD) / (hashrate in PH/s)
+  const hashrateOk = hashrateResult.status === 'fulfilled';
+  const priceOk    = priceResult.status === 'fulfilled';
+  if (hashrateOk && priceOk) {
+    const hashrate = hashrateResult.value.currentHashrate;
+    const btcPrice = priceResult.value.USD;
+    if (hashrate != null && btcPrice != null && hashrate > 0) {
+      const hashratePH = hashrate / 1e15;  // H/s → PH/s (1 PH = 1e15 H)
+      const hp = (3.125 * 144 * btcPrice) / hashratePH;
+      setNetVal('net-hashprice-val', '$' + hp.toFixed(2));
+    } else {
+      setNetVal('net-hashprice-val', '—');
+    }
+  } else {
+    setNetVal('net-hashprice-val', '—');
+  }
+}
+
+// Kick off immediately, then refresh every 5 minutes
+fetchNetworkStats();
+setInterval(fetchNetworkStats, 300000);
+
+/* ═══════════════════════════════════════════════
+   HASHRATE HEATING MODULE
+═══════════════════════════════════════════════ */
+
+const LS_HEATING_KEY = 'bmc_heating_settings';
+let heatingInitialized = false;
+let heatingBtcPriceCache = null;
+
+let heatingSettings = {
+  mode: 'simple',
+  heatingMonths: 6,
+  fuelType: 'electric',
+  costPerUnit: '',
+  minerWattage: '',
+  electricityRate: '',
+  monthlyFractions: null,
+  efficiencyOverride: '',
+  spaceType: 'spot',
+  heatingHashrate: '',
+  heatingHashrateUnit: 'TH/s',
+  minerPreset: '',
+  region: ''
+};
+
+const FUEL_CONFIG = {
+  electric: { label: '$/kWh',    placeholder: 'e.g. 0.13', defaultEff: 1.0,  unitFactor: 1.0,          isCOP: true  },
+  heatpump: { label: '$/kWh',    placeholder: 'e.g. 0.13', defaultEff: 3.0,  unitFactor: 1.0,          isCOP: true  },
+  gas:      { label: '$/therm',  placeholder: 'e.g. 1.20', defaultEff: 0.80, unitFactor: 0.02931,      isCOP: false },
+  propane:  { label: '$/gallon', placeholder: 'e.g. 2.80', defaultEff: 0.80, unitFactor: 0.02755,      isCOP: false },
+  oil:      { label: '$/gallon', placeholder: 'e.g. 3.50', defaultEff: 0.85, unitFactor: 0.01756,      isCOP: false },
+  pellets:  { label: '$/ton',    placeholder: 'e.g. 320',  defaultEff: 0.85, unitFactor: 1/4806,       isCOP: false }
+};
+
+// Miner presets: key → {wattage (W), hashrate (TH/s)}
+const MINER_PRESETS = {
+  'antminer-s19':         { wattage: 3250, hashrate: 95   },
+  'antminer-s19-pro':     { wattage: 3250, hashrate: 110  },
+  'antminer-s19j-pro':    { wattage: 3068, hashrate: 104  },
+  'antminer-s19-xp':      { wattage: 3010, hashrate: 140  },
+  'antminer-s21plus':     { wattage: 3564, hashrate: 216  },
+  'antminer-s21pro':      { wattage: 3510, hashrate: 234  },
+  'antminer-s21xp-hydro': { wattage: 5676, hashrate: 473  },
+  'avalon-mini3-night':   { wattage: 430,  hashrate: 24.7 },
+  'avalon-mini3-eco':     { wattage: 541,  hashrate: 29.4 },
+  'avalon-mini3-super':   { wattage: 784,  hashrate: 39.8 },
+  'avalon-mini3':         { wattage: 778,  hashrate: 39.5 },
+  'avalon-q-eco':         { wattage: 838,  hashrate: 54   },
+  'avalon-q-standard':    { wattage: 1375, hashrate: 80   },
+  'avalon-q-super':       { wattage: 1674, hashrate: 90   },
+  'avalon-a15':           { wattage: 3500, hashrate: 185  },
+  'whatsminer-m66s-hydro':{ wattage: 5513, hashrate: 298  },
+  'heatbit-trio':         { wattage: 3000, hashrate: 18   },
+  'heatbit-mini':         { wattage: 1400, hashrate: 8    }
+};
+
+// Regional fuel price defaults
+const REGIONAL_FUEL_PRICES = (function() {
+  const groups = {
+    newEngland:   { states: ['ME','NH','VT','MA','RI','CT'],                            electric: 0.23, gas: 1.85, propane: 3.20, oil: 4.20, pellets: 380 },
+    midAtlantic:  { states: ['NY','NJ','PA','DE','MD','DC'],                            electric: 0.18, gas: 1.45, propane: 2.90, oil: 3.90, pellets: 350 },
+    southeast:    { states: ['VA','WV','KY','NC','SC','GA','FL','AL','MS','TN'],        electric: 0.13, gas: 1.20, propane: 2.60, oil: 3.60, pellets: 320 },
+    midwest:      { states: ['OH','IN','IL','MI','WI','MN','IA','MO','ND','SD','NE','KS'], electric: 0.14, gas: 1.10, propane: 2.50, oil: 3.50, pellets: 310 },
+    southCentral: { states: ['TX','OK','AR','LA'],                                      electric: 0.12, gas: 0.95, propane: 2.40, oil: 3.30, pellets: 300 },
+    mountain:     { states: ['MT','ID','WY','CO','UT','NV','AZ','NM'],                  electric: 0.13, gas: 1.05, propane: 2.70, oil: 3.60, pellets: 330 },
+    pacific:      { states: ['WA','OR','CA'],                                           electric: 0.18, gas: 1.60, propane: 3.00, oil: 3.80, pellets: 360 },
+    AK:           { states: ['AK'],                                                     electric: 0.24, gas: 1.30, propane: 3.80, oil: 4.50, pellets: 420 },
+    HI:           { states: ['HI'],                                                     electric: 0.38, gas: 2.50, propane: 5.00, oil: 5.50, pellets: 500 },
+    canada:       { states: ['CA_CAN'],                                                 electric: 0.14, gas: 1.15, propane: 2.80, oil: 3.70, pellets: 340 }
+  };
+  const map = {};
+  for (const g of Object.values(groups)) {
+    for (const s of g.states) {
+      map[s] = { electric: g.electric, gas: g.gas, propane: g.propane, oil: g.oil, pellets: g.pellets };
+    }
+  }
+  return map;
+})();
+
+const SPACE_EFF = { spot: 0.95, ducted: 0.85, crawl: 0.60 };
+
+const H_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Winter-centered cold priority: Jan, Feb, Dec, Mar, Nov, Apr, Oct, May, Sep, Jun, Aug, Jul
+const COLD_ORDER = [0, 1, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6];
+
+function defaultMonthlyFractions(heatingMonths) {
+  const f = new Array(12).fill(0);
+  for (let i = 0; i < Math.min(heatingMonths, 12); i++) f[COLD_ORDER[i]] = 100;
+  return f;
+}
+
+function saveHeatingToDisk() {
+  try { localStorage.setItem(LS_HEATING_KEY, JSON.stringify(heatingSettings)); } catch(e) {}
+}
+
+function loadHeatingFromDisk() {
+  try {
+    const raw = localStorage.getItem(LS_HEATING_KEY);
+    if (raw) heatingSettings = Object.assign({}, heatingSettings, JSON.parse(raw));
+  } catch(e) {}
+}
+
+function getElecEntries() {
+  return sortedEntries().filter(e => e.type === 'electricity');
+}
+
+function getTotalElecUSD() {
+  return getElecEntries().reduce((s, e) => s + (e.usd_amount || 0), 0);
+}
+
+function getAvgBtcPriceFromElec() {
+  const elec = getElecEntries().filter(e => e.btc_price != null);
+  if (!elec.length) return null;
+  return elec.reduce((s, e) => s + e.btc_price, 0) / elec.length;
+}
+
+async function fetchCurrentBtcPriceForHeating() {
+  for (const base of ['https://mempool.757btc.org', 'https://mempool.space']) {
+    try {
+      const r = await fetch(base + '/api/v1/prices');
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (d.USD) return d.USD;
+    } catch(e) {}
+  }
+  return null;
+}
+
+// Calculate heating offset USD for a given useful heat in kWh
+function calcHeatingOffset(usefulHeatKWh, fuelType, costPerUnit, effOverride) {
+  const cfg = FUEL_CONFIG[fuelType];
+  if (!cfg || !costPerUnit || costPerUnit <= 0) return 0;
+
+  let eff = cfg.defaultEff;
+  if (effOverride && parseFloat(effOverride) > 0) {
+    const v = parseFloat(effOverride);
+    if (cfg.isCOP) {
+      eff = v; // COP entered directly
+    } else {
+      eff = v > 1 ? v / 100 : v; // AFUE % → fraction
+    }
+  }
+
+  if (cfg.isCOP) {
+    // kWh of heat / COP = kWh of electricity consumed by appliance → times $/kWh
+    return (usefulHeatKWh / eff) * costPerUnit;
+  } else {
+    // kWh of heat × unit-factor (kWh→fuel units) / AFUE × cost-per-unit
+    return (usefulHeatKWh * cfg.unitFactor / eff) * costPerUnit;
+  }
+}
+
+function updateFuelTypeUI() {
+  const ft = heatingSettings.fuelType;
+  const cfg = FUEL_CONFIG[ft];
+  if (!cfg) return;
+  const isElectricFuel = (ft === 'electric' || ft === 'heatpump');
+  const costRow = document.getElementById('h-cost-row');
+  const lbl = document.getElementById('h-cost-label');
+  const inp = document.getElementById('h-cost');
+  const effLbl = document.getElementById('h-eff-override-label');
+
+  // Show fuel cost row for gas/propane/oil/pellets (not for electric/heatpump)
+  if (costRow) costRow.style.display = isElectricFuel ? 'none' : '';
+
+  if (!isElectricFuel) {
+    if (lbl) lbl.textContent = 'Heating fuel cost (' + cfg.label + ')';
+    if (inp) inp.placeholder = cfg.placeholder;
+  }
+
+  if (effLbl) {
+    if (cfg.isCOP) {
+      effLbl.textContent = 'Appliance efficiency override (COP) — default: ' + cfg.defaultEff.toFixed(1);
+    } else {
+      effLbl.textContent = 'Appliance efficiency override (AFUE %) — default: ' + (cfg.defaultEff * 100).toFixed(0) + '%';
+    }
+  }
+
+  // Auto-fill regional price when fuel type changes
+  if (!isElectricFuel && heatingSettings.region) {
+    const prices = REGIONAL_FUEL_PRICES[heatingSettings.region];
+    if (prices && prices[ft] != null) {
+      const costInp = document.getElementById('h-cost');
+      if (costInp) costInp.value = prices[ft];
+    }
+  }
+}
+
+function onMinerPresetChange() {
+  const sel = document.getElementById('h-miner-preset');
+  if (!sel) return;
+  const key = sel.value;
+  heatingSettings.minerPreset = key;
+  const wattEl = document.getElementById('h-wattage');
+  const hhrEl  = document.getElementById('h-heating-hashrate');
+  const hhruEl = document.getElementById('h-heating-hashrate-unit');
+  if (!key) {
+    // Custom — clear fields
+    if (wattEl) wattEl.value = '';
+    if (hhrEl)  hhrEl.value  = '';
+  } else {
+    const preset = MINER_PRESETS[key];
+    if (preset) {
+      if (wattEl) wattEl.value = preset.wattage;
+      if (hhrEl)  hhrEl.value  = preset.hashrate;
+      if (hhruEl) hhruEl.value = 'TH/s';
+    }
+  }
+  saveHeatingToDisk();
+  recalcHeating();
+}
+
+function onRegionChange() {
+  const sel = document.getElementById('h-region');
+  if (!sel) return;
+  const region = sel.value;
+  heatingSettings.region = region;
+  const ft = heatingSettings.fuelType;
+  const isElectricFuel = (ft === 'electric' || ft === 'heatpump');
+  if (region) {
+    const prices = REGIONAL_FUEL_PRICES[region];
+    if (prices) {
+      if (isElectricFuel) {
+        // Fill electricity rate
+        const rateEl = document.getElementById('h-elec-rate');
+        if (rateEl) rateEl.value = prices.electric;
+      } else {
+        // Fill fuel cost
+        const costEl = document.getElementById('h-cost');
+        if (costEl && prices[ft] != null) costEl.value = prices[ft];
+        // Also fill electricity rate if empty
+        const rateEl = document.getElementById('h-elec-rate');
+        if (rateEl && !rateEl.value) rateEl.value = prices.electric;
+      }
+    }
+  }
+  saveHeatingToDisk();
+  recalcHeating();
+}
+
+function buildMonthlyTable() {
+  const fracs = heatingSettings.monthlyFractions || defaultMonthlyFractions(heatingSettings.heatingMonths);
+  heatingSettings.monthlyFractions = fracs;
+  const tbody = document.getElementById('h-monthly-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = fracs.map((frac, i) => `
+    <tr data-month="${i}">
+      <td>${H_MONTHS[i]}</td>
+      <td>
+        <input type="number" class="h-fraction-input" id="h-frac-${i}"
+               value="${frac}" min="0" max="100" step="1"
+               onchange="onMonthFractionChange(${i}, this.value)">
+        <span style="color:var(--text-muted);font-size:.82rem"> %</span>
+      </td>
+      <td id="h-mheat-${i}">—</td>
+      <td id="h-musd-${i}">—</td>
+      <td id="h-msats-${i}">—</td>
+      <td id="h-mrate-${i}">—</td>
+    </tr>
+  `).join('');
+}
+
+function renderMonthlyTableData(totalKWh, fuelType, costPerUnit, effOverride, spaceType, avgBtcPrice, heatingProportion) {
+  heatingProportion = (heatingProportion != null && heatingProportion >= 0) ? heatingProportion : 1.0;
+  const fracs = heatingSettings.monthlyFractions;
+  if (!fracs) return;
+  const spaceEff = SPACE_EFF[spaceType] || 1.0;
+  const kWhPerMonth = totalKWh / 12;
+  const totalElecUSD = getTotalElecUSD();
+  const monthElecUSD = totalElecUSD / 12;
+
+  let totHeat = 0, totUSD = 0, totSats = 0;
+
+  fracs.forEach((frac, i) => {
+    const fraction = Math.max(0, Math.min(100, frac)) / 100;
+    const heatKWh = kWhPerMonth * fraction * spaceEff * heatingProportion;
+    const offsetUSD = calcHeatingOffset(heatKWh, fuelType, costPerUnit, effOverride);
+    const offsetSats = avgBtcPrice ? Math.round((offsetUSD / avgBtcPrice) * 1e8) : null;
+    const rawEffRate = kWhPerMonth > 0 ? (monthElecUSD - offsetUSD) / kWhPerMonth : null;
+    const effRate = rawEffRate != null ? Math.max(0, rawEffRate) : null;
+
+    totHeat += heatKWh;
+    totUSD  += offsetUSD;
+    totSats += offsetSats || 0;
+
+    const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    set('h-mheat-' + i, heatKWh.toFixed(1) + ' kWh');
+    set('h-musd-'  + i, '$' + offsetUSD.toFixed(2));
+    set('h-msats-' + i, offsetSats != null ? offsetSats.toLocaleString() + ' sats' : '—');
+    set('h-mrate-' + i, (effRate != null && isFinite(effRate)) ? '$' + effRate.toFixed(4) : '—');
+  });
+
+  const tfoot = document.getElementById('h-monthly-tfoot');
+  if (tfoot) {
+    tfoot.innerHTML = `<tr>
+      <td colspan="2">Totals</td>
+      <td>${totHeat.toFixed(1)} kWh</td>
+      <td>$${totUSD.toFixed(2)}</td>
+      <td>${totSats.toLocaleString()} sats</td>
+      <td>—</td>
+    </tr>`;
+  }
+}
+
+function onHeatingMonthsChange(val) {
+  const n = parseInt(val) || 6;
+  heatingSettings.heatingMonths = n;
+  const disp = document.getElementById('h-months-display');
+  if (disp) disp.textContent = n;
+  // In detailed mode, reset fractions to new default
+  if (heatingSettings.mode === 'detailed') {
+    heatingSettings.monthlyFractions = defaultMonthlyFractions(n);
+    buildMonthlyTable();
+  }
+  recalcHeating();
+}
+
+function onFuelTypeChange() {
+  heatingSettings.fuelType = document.getElementById('h-fuel-type').value;
+  updateFuelTypeUI();
+  recalcHeating();
+}
+
+function onMonthFractionChange(idx, val) {
+  if (!heatingSettings.monthlyFractions) {
+    heatingSettings.monthlyFractions = defaultMonthlyFractions(heatingSettings.heatingMonths);
+  }
+  heatingSettings.monthlyFractions[idx] = Math.max(0, Math.min(100, parseInt(val) || 0));
+  recalcHeating();
+}
+
+function toggleHeatingMode() {
+  if (heatingSettings.mode === 'simple') {
+    heatingSettings.mode = 'detailed';
+    document.getElementById('heating-mode-btn').textContent = 'Switch to Simple Mode';
+    if (!heatingSettings.monthlyFractions) {
+      heatingSettings.monthlyFractions = defaultMonthlyFractions(heatingSettings.heatingMonths);
+    }
+    document.getElementById('heating-detailed-panel').style.display = 'block';
+    buildMonthlyTable();
+  } else {
+    heatingSettings.mode = 'simple';
+    document.getElementById('heating-mode-btn').textContent = 'Switch to Detailed Mode';
+    document.getElementById('heating-detailed-panel').style.display = 'none';
+  }
+  recalcHeating();
+}
+
+function exportHeatingCSV() {
+  const fracs = heatingSettings.monthlyFractions || defaultMonthlyFractions(heatingSettings.heatingMonths);
+  const fuelType = heatingSettings.fuelType;
+  const isElectricFuelCSV = (fuelType === 'electric' || fuelType === 'heatpump');
+  const electricityRate = parseFloat(heatingSettings.electricityRate);
+  const costPerUnit = isElectricFuelCSV ? electricityRate : (parseFloat(heatingSettings.costPerUnit) || 0);
+  const effOverride = heatingSettings.efficiencyOverride;
+  const spaceType = heatingSettings.spaceType;
+  const avgBtcPrice = getAvgBtcPriceFromElec() || heatingBtcPriceCache;
+  const totalElecUSD = getTotalElecUSD();
+  if (!electricityRate || electricityRate <= 0 || totalElecUSD <= 0) {
+    showToast('Enter a valid electricity rate and add electricity entries first.', 'error');
+    return;
+  }
+  const totalKWh = totalElecUSD / electricityRate;
+  const kWhPerMonth = totalKWh / 12;
+  const monthElecUSD = totalElecUSD / 12;
+  const spaceEff = SPACE_EFF[spaceType] || 1.0;
+
+  const header = 'Month,Heating Fraction %,Heat Produced (kWh),Offset (USD),Offset (sats),Eff. Rate ($/kWh)\n';
+  const rows = fracs.map((frac, i) => {
+    const fraction = Math.max(0, Math.min(100, frac)) / 100;
+    const heatKWh = kWhPerMonth * fraction * spaceEff;
+    const offsetUSD = calcHeatingOffset(heatKWh, fuelType, costPerUnit, effOverride);
+    const offsetSats = avgBtcPrice ? Math.round((offsetUSD / avgBtcPrice) * 1e8) : '';
+    const effRate = kWhPerMonth > 0 ? (monthElecUSD - offsetUSD) / kWhPerMonth : '';
+    const clampedRate = isFinite(effRate) && effRate !== '' ? Math.max(0, effRate).toFixed(4) : '';
+    return [H_MONTHS[i], frac, heatKWh.toFixed(2), offsetUSD.toFixed(2),
+            offsetSats !== '' ? offsetSats : '', clampedRate].join(',');
+  }).join('\n');
+
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'bmc-heating-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Heating data exported ✓', 'success');
+}
+
+async function recalcHeating() {
+  if (!heatingInitialized) return;
+
+  // Sync settings from DOM
+  heatingSettings.fuelType            = document.getElementById('h-fuel-type').value;
+  heatingSettings.costPerUnit         = document.getElementById('h-cost').value;
+  heatingSettings.electricityRate     = document.getElementById('h-elec-rate').value;
+  heatingSettings.minerWattage        = document.getElementById('h-wattage').value;
+  heatingSettings.efficiencyOverride  = document.getElementById('h-eff-override').value;
+  heatingSettings.spaceType           = document.getElementById('h-space-type').value;
+  heatingSettings.heatingHashrate     = document.getElementById('h-heating-hashrate') ? document.getElementById('h-heating-hashrate').value : '';
+  heatingSettings.heatingHashrateUnit = document.getElementById('h-heating-hashrate-unit') ? document.getElementById('h-heating-hashrate-unit').value : 'TH/s';
+  const presetSel = document.getElementById('h-miner-preset');
+  if (presetSel) heatingSettings.minerPreset = presetSel.value;
+  const regionSel = document.getElementById('h-region');
+  if (regionSel) heatingSettings.region = regionSel.value;
+  saveHeatingToDisk();
+
+  const elecEntries = getElecEntries();
+  const noDataEl = document.getElementById('heating-no-data');
+  const mainEl   = document.getElementById('heating-main');
+
+  if (elecEntries.length === 0) {
+    if (noDataEl) noDataEl.style.display = 'block';
+    if (mainEl)   mainEl.style.display   = 'none';
+    return;
+  }
+  if (noDataEl) noDataEl.style.display = 'none';
+  if (mainEl)   mainEl.style.display   = 'block';
+
+  const fuelType        = heatingSettings.fuelType;
+  const isElectricFuel  = (fuelType === 'electric' || fuelType === 'heatpump');
+  const electricityRate = parseFloat(heatingSettings.electricityRate);
+  // For electric/heat pump, heating cost = electricity rate (same meter)
+  let costPerUnit = isElectricFuel
+    ? electricityRate
+    : parseFloat(heatingSettings.costPerUnit);
+  const heatingMonths = heatingSettings.heatingMonths;
+  const effOverride   = heatingSettings.efficiencyOverride;
+  const spaceType     = heatingSettings.spaceType;
+
+  const resultsPanel = document.getElementById('heating-results-panel');
+
+  if (!electricityRate || electricityRate <= 0 || (!isElectricFuel && (!costPerUnit || costPerUnit <= 0))) {
+    if (resultsPanel) resultsPanel.style.display = 'none';
+    return;
+  }
+
+  const totalElecUSD   = getTotalElecUSD();
+  const totalKWh       = totalElecUSD / electricityRate;
+
+  // Hashrate-based proportion: heating_TH / total_TH (clamped 0–1)
+  const roiHashrateTH  = getRoiHashrateTH();
+  const heatHashrateTH = getHeatingHashrateTH();
+  const hashrateNoteEl = document.getElementById('h-heating-hashrate-note');
+  let heatingProportion = 1.0;
+  if (roiHashrateTH > 0 && heatHashrateTH > 0) {
+    heatingProportion = Math.min(1.0, heatHashrateTH / roiHashrateTH);
+    if (hashrateNoteEl) hashrateNoteEl.style.display = 'none';
+  } else if (heatHashrateTH > 0 && !(roiHashrateTH > 0)) {
+    // Only heating hashrate provided — show note, fall back to proportion = 1
+    if (hashrateNoteEl) hashrateNoteEl.style.display = 'block';
+    heatingProportion = 1.0;
+  } else {
+    if (hashrateNoteEl) hashrateNoteEl.style.display = 'none';
+    heatingProportion = 1.0;
+  }
+
+  const heatingFraction = heatingMonths / 12;
+  const usefulHeatKWh  = totalKWh * heatingProportion * heatingFraction;  // simple mode: no space type factor
+
+  // BTC price
+  let avgBtcPrice = getAvgBtcPriceFromElec();
+  if (!avgBtcPrice) {
+    if (!heatingBtcPriceCache) heatingBtcPriceCache = await fetchCurrentBtcPriceForHeating();
+    avgBtcPrice = heatingBtcPriceCache;
+  }
+
+  const offsetUSD  = calcHeatingOffset(usefulHeatKWh, fuelType, costPerUnit, effOverride);
+  const offsetSats = avgBtcPrice ? Math.round((offsetUSD / avgBtcPrice) * 1e8) : null;
+  // Expose heating offset globally so ROI toggle can consume it
+  window.currentHeatingOffsetSats = offsetSats || 0;
+  updateHeatingOffsetToggleSub();
+  const effectiveRate = totalKWh > 0 ? Math.max(0, (totalElecUSD - offsetUSD) / totalKWh) : null;
+
+  // Adjusted break-even
+  const sorted      = sortedEntries();
+  const balances    = computeRunningBalances(sorted);
+  const curBalance  = balances.length > 0 ? balances[balances.length - 1] : 0;
+  const payoutsList = getPayoutEntries ? getPayoutEntries() : sortedEntries().filter(e => e.type === 'payout');
+  const avgRate     = computeAvgSatsPerDay(payoutsList);
+  const today       = new Date().toISOString().slice(0, 10);
+
+  let adjBE = '—', adjBEsub = 'add payouts for projection', adjPos = false;
+
+  if (offsetSats != null) {
+    const adjBalance = curBalance + offsetSats;
+    if (adjBalance >= 0) {
+      adjBE = 'Already profitable';
+      adjBEsub = 'with heating offset applied';
+      adjPos = true;
+    } else if (avgRate > 0) {
+      const proj = computeProjectionPoints(today, adjBalance, avgRate);
+      if (proj && proj.breakEvenDate) {
+        const days = Math.ceil(daysBetween(today, proj.breakEvenDate));
+        adjBE = formatDate(proj.breakEvenDate);
+        adjBEsub = '~' + days + ' day' + (days === 1 ? '' : 's') + ' from now';
+      } else if (proj && proj.endOfRange) {
+        adjBE = '>365 days';
+        adjBEsub = 'beyond 1-year horizon';
+      } else {
+        adjBEsub = 'projection unavailable';
+      }
+    } else {
+      adjBEsub = 'no earning rate yet';
+    }
+  }
+
+  // Update result cards
+  if (resultsPanel) resultsPanel.style.display = 'block';
+
+  const s = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const sc = (id, cls) => { const el = document.getElementById(id); if (el) el.className = cls; };
+
+  s('h-offset-usd',       '$' + offsetUSD.toFixed(2));
+  s('h-offset-sats',      offsetSats != null ? offsetSats.toLocaleString() + ' sats' : '—');
+  s('h-offset-sats-sub',  avgBtcPrice ? 'at avg BTC $' + Math.round(avgBtcPrice).toLocaleString() : 'BTC price unavailable');
+  s('h-eff-rate',         effectiveRate != null ? '$' + effectiveRate.toFixed(4) + '/kWh' : '—');
+  s('h-adj-breakeven',    adjBE);
+  sc('h-adj-breakeven',   'value summary-date-val' + (adjPos ? ' positive' : ''));
+  s('h-adj-breakeven-sub', adjBEsub);
+
+  // COPe — Economic Coefficient of Performance
+  const copeEl = document.getElementById('cope-val');
+  if (copeEl) {
+    if (totalElecUSD > 0) {
+      // Sum mining revenue: sats_value * btc_price / 1e8 for all payout entries
+      const payoutsForCOPe = sortedEntries().filter(e => e.type === 'payout');
+      let miningRevenueUSD = 0;
+      for (const pe of payoutsForCOPe) {
+        const price = pe.btc_price || avgBtcPrice;
+        if (price && pe.sats_value) {
+          miningRevenueUSD += pe.sats_value * price / 100000000;
+        }
+      }
+      const cope = (offsetUSD + miningRevenueUSD) / totalElecUSD;
+      copeEl.textContent = cope.toFixed(2) + '×';
+      copeEl.style.color = cope >= 1 ? '#d4830a' : '#ef4444';
+    } else {
+      copeEl.textContent = '—';
+      copeEl.style.color = '';
+    }
+  }
+
+  // Detailed mode table update
+  if (heatingSettings.mode === 'detailed') {
+    renderMonthlyTableData(totalKWh, fuelType, costPerUnit, effOverride, spaceType, avgBtcPrice, heatingProportion);
+  }
+}
+
+function toggleHowItWorks() {
+  const wrap  = document.getElementById('how-it-works');
+  if (wrap) wrap.classList.toggle('open');
+}
+
+/* ═════════════════════════════════════════════
+   HEATING OFFSET ROI TOGGLE
+═════════════════════════════════════════════ */
+function updateHeatingOffsetToggleSub() {
+  const sub = document.getElementById('heating-offset-toggle-sub');
+  if (!sub) return;
+  if (heatingOffsetInRoi && window.currentHeatingOffsetSats > 0) {
+    sub.textContent = 'Offset: −' + window.currentHeatingOffsetSats.toLocaleString() + ' sats';
+  } else {
+    sub.textContent = 'Configure heating settings to enable';
+  }
+}
+
+function onHeatingOffsetToggle() {
+  const checkbox = document.getElementById('heating-offset-toggle');
+  if (!checkbox) return;
+  if (checkbox.checked) {
+    if (!(window.currentHeatingOffsetSats > 0)) {
+      showToast('Configure heating settings first', 'error');
+      checkbox.checked = false;
+      return;
+    }
+    heatingOffsetInRoi = true;
+  } else {
+    heatingOffsetInRoi = false;
+  }
+  try { localStorage.setItem('bmc_heating_offset_in_roi', heatingOffsetInRoi ? '1' : '0'); } catch(e) {}
+  updateHeatingOffsetToggleSub();
+  renderAll();
+}
+
+function initHeatingUI() {
+  loadHeatingFromDisk();
+
+  // Restore input values
+  const slider = document.getElementById('h-months-slider');
+  if (slider) slider.value = heatingSettings.heatingMonths;
+  const disp = document.getElementById('h-months-display');
+  if (disp) disp.textContent = heatingSettings.heatingMonths;
+
+  const ft = document.getElementById('h-fuel-type');
+  if (ft) ft.value = heatingSettings.fuelType;
+  const cost = document.getElementById('h-cost');
+  if (cost) cost.value = heatingSettings.costPerUnit;
+  const rate = document.getElementById('h-elec-rate');
+  if (rate) rate.value = heatingSettings.electricityRate;
+  const watt = document.getElementById('h-wattage');
+  if (watt) watt.value = heatingSettings.minerWattage;
+  const effOvr = document.getElementById('h-eff-override');
+  if (effOvr) effOvr.value = heatingSettings.efficiencyOverride;
+  const spt = document.getElementById('h-space-type');
+  if (spt) spt.value = heatingSettings.spaceType;
+  const hhr = document.getElementById('h-heating-hashrate');
+  if (hhr) hhr.value = heatingSettings.heatingHashrate || '';
+  const hhru = document.getElementById('h-heating-hashrate-unit');
+  if (hhru) hhru.value = heatingSettings.heatingHashrateUnit || 'TH/s';
+  const preset = document.getElementById('h-miner-preset');
+  if (preset) preset.value = heatingSettings.minerPreset || '';
+  const region = document.getElementById('h-region');
+  if (region) region.value = heatingSettings.region || '';
+
+  updateFuelTypeUI();
+
+  // Restore mode
+  if (heatingSettings.mode === 'detailed') {
+    const btn = document.getElementById('heating-mode-btn');
+    const panel = document.getElementById('heating-detailed-panel');
+    if (btn)   btn.textContent = 'Switch to Simple Mode';
+    if (panel) panel.style.display = 'block';
+    if (!heatingSettings.monthlyFractions) {
+      heatingSettings.monthlyFractions = defaultMonthlyFractions(heatingSettings.heatingMonths);
+    }
+    buildMonthlyTable();
+  }
+
+  heatingInitialized = true;
+  recalcHeating();
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+load();
+loadRoiHashrate();
+// Restore heating offset toggle state from localStorage
+try {
+  heatingOffsetInRoi = localStorage.getItem('bmc_heating_offset_in_roi') === '1';
+  const _toggleEl = document.getElementById('heating-offset-toggle');
+  if (_toggleEl) _toggleEl.checked = heatingOffsetInRoi;
+} catch(e) {}
+initHeatingUI();
+initPoolSync();
+renderAll();
+
+// Set default dates to today and block future dates
+(function() {
+  const today = new Date().toISOString().slice(0,10);
+  ['payout-date', 'elec-date', 'hw-date'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = today;
+    el.max = today;
+  });
+})();
+</script>
+
+<!-- Footer -->
+<footer class="footer">
+  <span class="footer-btc">₿</span>
+  <div class="footer-name">Backwater Mining Collective</div>
+  <p class="footer-sub">Mining for heat. Mining for community. Mining for decentralization.</p>
+  <p style="margin-top:0.75rem; font-size:0.8rem; color:var(--text-muted);">This tool is open source. <a href="https://github.com/backwater-mining-collective/backwater-mining-collective.github.io" target="_blank" rel="noopener" style="color:var(--amber);">View the code on GitHub</a> — your data never leaves your device.</p>
+</footer>
+
+</body>
+</html>
